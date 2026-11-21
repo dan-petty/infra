@@ -1,0 +1,7 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate opens the dependency update pull requests of infra. The shared preset of devops-cli sets the schedule, the groups and the labels.",
+  "extends": [
+    "github>dan-petty/devops-cli//.github/renovate/base"
+  ]
+}
