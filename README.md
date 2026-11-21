@@ -29,8 +29,9 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `docs/` | Documents that apply to more than one template. |
 | `.github/workflows/` | CI (`ci.yml`) and the reusable workflow `k8s-validate.yml`. |
 
-The README of each folder tells its content and the consumers of each template. Each folder has
-an `example` fixture: it lets CI prove that each check runs. The real templates come with later
+The README of each folder tells its content and the consumers of each template. Each folder that
+a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` and
+`renovate/` get their first content with later items. The real templates come with later
 items, such as dan-petty/infra#6 (Renovate presets), #7 and #8 (Ansible roles and plays), #9
 (OpenTofu modules), #10 (a chart) and #11 to #19 (Kubernetes bases and components, and Helm values
 templates). dan-petty/infra#5 makes the release tags.

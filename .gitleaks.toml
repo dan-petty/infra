@@ -3,7 +3,7 @@
 # scripts/private-data-scan.sh runs gitleaks with this file, in CI and in the pre-commit hook. When
 # the environment variable PRIVATE_DOMAINS is set, the script adds the rule private-domain at run
 # time, so no file holds a real domain. tests/test-private-data-scan.sh holds a case for each rule
-# and each allowlist entry.
+# and each allowlist entry of a rule. The path allowlist below skips only tool and build output.
 #
 # The default rules of gitleaks find the known secret formats. The rules below find private data.
 # A rule takes the value in its group 1, and an allowlist of the rule compares that value. The
