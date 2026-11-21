@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Check that a URL is an HTTPS URL.
+    options:
+      example_url:
+        type: str
+        default: https://example.com/
+        description: The URL that the role checks.

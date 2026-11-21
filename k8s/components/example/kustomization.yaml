@@ -1,0 +1,11 @@
+# The example component: it adds the Prometheus rules of rules/ as a ConfigMap. promtool checks the
+# rule file, and the test overlay k8s/tests/example renders the component.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+configMapGenerator:
+  - name: example-rules
+    files:
+      - rules/example.rules.yaml
+    options:
+      labels:
+        app.kubernetes.io/name: example

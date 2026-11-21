@@ -1,0 +1,16 @@
+# Argo CD never prunes or deletes this claim and the data on its volume (the kube-linter check
+# pvc-prune-protection of .kube-linter.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example
+  labels:
+    app.kubernetes.io/name: example
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

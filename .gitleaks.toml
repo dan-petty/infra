@@ -1,0 +1,83 @@
+# The private-data guard of infra. infra is public, so it holds no private address, no name of a
+# local network, no device path, no real domain and no secret (devops-cli ADR 0032, decision 6).
+# scripts/private-data-scan.sh runs gitleaks with this file, in CI and in the pre-commit hook. When
+# the environment variable PRIVATE_DOMAINS is set, the script adds the rule private-domain at run
+# time, so no file holds a real domain. tests/test-private-data-scan.sh holds a case for each rule
+# and each allowlist entry.
+#
+# The default rules of gitleaks find the known secret formats. The rules below find private data.
+# A rule takes the value in its group 1, and an allowlist of the rule compares that value. The
+# RFC 5737 ranges 192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24 match no rule, so templates and
+# tests use them with no allowlist entry.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """The output of uv sync, tofu init and the chart and collection builds, which .gitignore \
+covers. The default allowlist of gitleaks skips .git and this file."""
+paths = [
+  '''(?:^|/)\.venv/''',
+  '''(?:^|/)\.terraform/''',
+  '''(?:^|/)charts/[^/]+/charts/[^/]+\.tgz$''',
+  '''(?:^|/)dan_petty-infra-[^/]+\.tar\.gz$''',
+]
+
+[[rules]]
+id = "private-ipv4"
+description = "An RFC 1918 host address or subnet (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)"
+regex = '''(?:^|[^0-9A-Za-z.])((?:10\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?:/[0-9]{1,2})?)(?:[^0-9A-Za-z.]|\.[^0-9]|\.$|$)'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = """The default cluster CIDR 10.42.0.0/16 and Service CIDR 10.43.0.0/16 of k3s, and the \
+block of each RFC 1918 range: public values that name no host"""
+regexes = ['''^(?:10\.42\.0\.0/16|10\.43\.0\.0/16|10\.0\.0\.0/8|172\.16\.0\.0/12|192\.168\.0\.0/16)$''']
+
+[[rules]]
+id = "cgnat-ipv4"
+description = "A shared address space host address or subnet (RFC 6598, 100.64.0.0/10)"
+regex = '''(?:^|[^0-9A-Za-z.])(100\.(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?:/[0-9]{1,2})?)(?:[^0-9A-Za-z.]|\.[^0-9]|\.$|$)'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = "The block of the range, which names no host"
+regexes = ['''^100\.64\.0\.0/10$''']
+
+[[rules]]
+id = "link-local-ipv4"
+description = "An IPv4 link-local host address or subnet (RFC 3927, 169.254.0.0/16)"
+regex = '''(?:^|[^0-9A-Za-z.])(169\.254\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?:/[0-9]{1,2})?)(?:[^0-9A-Za-z.]|\.[^0-9]|\.$|$)'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = "The block of the range, which names no host"
+regexes = ['''^169\.254\.0\.0/16$''']
+
+[[rules]]
+id = "link-local-ipv6"
+description = "An IPv6 link-local host address (RFC 4291, fe80::/10)"
+regex = '''(?i)(?:^|[^0-9a-z:])(fe[89ab][0-9a-f]:[0-9a-f:]*[0-9a-f])(?:[^0-9a-z:]|$)'''
+secretGroup = 1
+
+[[rules]]
+id = "local-network-name"
+description = "A host name of a local network: a name that ends in .lan or .local"
+regex = '''(?i)(?:^|[^a-z0-9_.-])((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:lan|local))(?:[^a-z0-9_.-]|\.[^a-z0-9]|\.$|$)'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = "The default DNS domain of a Kubernetes cluster, which names no local network"
+regexes = ['''(?i)(?:^|\.)cluster\.local$''']
+
+[[rules]]
+id = "device-path"
+description = "A device path, which names the hardware of one host"
+regex = '''(?:^|[^A-Za-z0-9_.~/-])(/dev/[A-Za-z0-9](?:[A-Za-z0-9_.:+@/-]*[A-Za-z0-9_+@-])?)'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = "The pseudo-devices of each Linux host and container, which name no hardware"
+regexes = [
+  '''^/dev/(?:null|zero|full|random|urandom|stdin|stdout|stderr|tty|ptmx|termination-log)$''',
+  '''^/dev/(?:fd|pts|shm)(?:/[A-Za-z0-9_.-]+)?$''',
+]

@@ -1,0 +1,20 @@
+# The checks of each commit. After `uv sync --frozen`, `.venv/bin/pre-commit install` installs the
+# hook, once per clone. CI runs the same checks in .github/workflows/ci.yml.
+#
+# no-commit-to-branch refuses a commit on main: each change goes through a pull request. The gitleaks
+# hook runs the private-data guard on the staged changes, with the gitleaks of mise.toml. Set
+# PRIVATE_DOMAINS (one domain on each line) in the environment to also refuse those domains.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: no-commit-to-branch
+        args: [--branch, main]
+
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: private-data guard (gitleaks)
+        entry: mise exec -- scripts/private-data-scan.sh git --pre-commit --staged
+        language: unsupported
+        pass_filenames: false

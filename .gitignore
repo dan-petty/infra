@@ -1,0 +1,12 @@
+# The Python tools of uv sync.
+.venv/
+# The caches of ansible-lint and ansible-galaxy, and the collection that ansible-galaxy builds.
+.ansible/
+dan_petty-infra-*.tar.gz
+# The providers and modules of tofu init. The examples use no provider, so they have no lock file.
+.terraform/
+.terraform.lock.hcl
+# The upstream charts of helm dependency build. Chart.lock stays in git.
+charts/*/charts/
+helm/*/charts/
+helm/*/*/charts/

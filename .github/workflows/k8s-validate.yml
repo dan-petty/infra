@@ -1,0 +1,128 @@
+name: K8s Validate
+
+# The shared checks of Kubernetes manifests, Helm charts and Prometheus rules, as a reusable
+# workflow. .github/workflows/ci.yml calls it for the fixtures of infra. Another repository calls it
+# at a release tag of infra, which Renovate updates:
+#
+#   jobs:
+#     k8s:
+#       uses: dan-petty/infra/.github/workflows/k8s-validate.yml@vX.Y.Z
+#       permissions:
+#         contents: read
+#       with:
+#         kustomize-roots: |
+#           k8s/overlays/example
+#
+# The job checks out the repository of the caller, and the infra commit of this workflow
+# (job.workflow_sha) into .infra-workflow. It installs the tools of the mise.toml and mise.lock of
+# that commit, so each caller runs the tools at the versions of its infra tag. Each check step runs
+# one step of scripts/k8s-validate.sh, which a local run can also run (README.md, "Checks"):
+# kustomize build and helm template into kubeconform -strict (with the CRD schemas of the datreeio
+# CRDs-catalog), kube-linter and trivy config, and helm lint, helm unittest and promtool check rules.
+on:
+  workflow_call:
+    inputs:
+      kustomize-roots:
+        description: The Kustomize folders to build, one on each line, relative to the repository root.
+        type: string
+        default: ""
+      helm-charts:
+        description: >-
+          The Helm chart folders to lint, render and test, one on each line, relative to the repository
+          root. Each ci/*-values.yaml file of a chart gives one render.
+        type: string
+        default: ""
+      kube-linter-config:
+        description: The kube-linter config file of the caller. Empty selects the shared .kube-linter.yaml of infra.
+        type: string
+        default: ""
+      promtool-rules:
+        description: The Prometheus rule files to check, one on each line, relative to the repository root.
+        type: string
+        default: ""
+
+permissions: {}
+
+env:
+  # No tool of the job reports usage.
+  DO_NOT_TRACK: "1"
+  MISE_USE_VERSIONS_HOST_TRACK: "false"
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      KUSTOMIZE_ROOTS: ${{ inputs.kustomize-roots }}
+      HELM_CHARTS: ${{ inputs.helm-charts }}
+      KUBE_LINTER_CONFIG: ${{ inputs.kube-linter-config }}
+      PROMTOOL_RULES: ${{ inputs.promtool-rules }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check out the infra commit of this workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .infra-workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /mise.toml
+            /mise.lock
+            /.kube-linter.yaml
+            /scripts/k8s-validate.sh
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      # mise installs only the tools of the checks, at the URLs and checksums of mise.lock, and puts
+      # their folders first on PATH. A mise.toml of the caller does not change them.
+      - name: Install the tools of mise.lock
+        timeout-minutes: 5
+        working-directory: .infra-workflow
+        env:
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$WORKFLOW_SHA"
+          mise install --locked github:helm-unittest/helm-unittest helm kube-linter kubeconform kustomize \
+            promtool trivy
+          mise bin-paths >>"$GITHUB_PATH"
+          echo "RENDERED=$RUNNER_TEMP/rendered" >>"$GITHUB_ENV"
+          echo "K8S_VALIDATE=$PWD/scripts/k8s-validate.sh" >>"$GITHUB_ENV"
+
+      - name: Render the Kustomize roots, and lint and render the Helm charts
+        timeout-minutes: 5
+        run: '"$K8S_VALIDATE" render'
+
+      - name: Run kubeconform
+        timeout-minutes: 3
+        run: '"$K8S_VALIDATE" kubeconform'
+
+      - name: Run kube-linter
+        timeout-minutes: 3
+        run: '"$K8S_VALIDATE" kube-linter'
+
+      - name: Run trivy config
+        timeout-minutes: 5
+        run: '"$K8S_VALIDATE" trivy'
+
+      - name: Run helm unittest
+        timeout-minutes: 3
+        run: '"$K8S_VALIDATE" helm-unittest'
+
+      - name: Check the Prometheus rules
+        timeout-minutes: 2
+        run: '"$K8S_VALIDATE" promtool'
