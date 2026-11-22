@@ -1,0 +1,72 @@
+name: Release
+
+# release-please makes each release of infra (README.md, "Releases"). On each push to main it opens
+# or updates one release pull request, which holds the next version in version.txt,
+# .release-please-manifest.json and ansible/galaxy.yml, and the new entry of CHANGELOG.md. When a
+# person merges that pull request, the next run creates the tag vX.Y.Z and its GitHub release.
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    # The token of the release App opens the release pull request, so the checks of ci.yml run on
+    # it; a pull request that GITHUB_TOKEN opens starts no workflow. The environment release holds
+    # the credentials of the App (devops-cli ADR 0032).
+    environment: release
+    permissions: {}
+
+    steps:
+      # Without the credentials, the next step stops with a message that does not name the
+      # environment. This step names each missing credential and stops the job.
+      - name: Check the credentials of the release App
+        env:
+          HAS_CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
+          HAS_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+        run: |
+          missing=""
+          if [ "$HAS_CLIENT_ID" != true ]; then
+            missing="no variable RELEASE_APP_CLIENT_ID"
+          fi
+          if [ "$HAS_PRIVATE_KEY" != true ]; then
+            missing="${missing:+$missing and }no secret RELEASE_APP_PRIVATE_KEY"
+          fi
+          credentials="the variable RELEASE_APP_CLIENT_ID and the secret RELEASE_APP_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            message="The environment release of $GITHUB_REPOSITORY has $missing. A repository admin adds"
+            message="$message $credentials of the release App to the environment release, and then"
+            message="$message runs this job again."
+            echo "::error title=Release credentials missing::$message"
+            printf '> [!CAUTION]\n> %s\n' "$message" >>"$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "The environment release holds $credentials."
+
+      - name: Mint the token of the release App
+        id: app
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # The token gets only what release-please-action documents: the release pull request,
+          # its labels, the CHANGELOG.md and version commits, the tag and the GitHub release.
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Run release-please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

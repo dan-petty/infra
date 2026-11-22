@@ -1,9 +1,6 @@
-# The metadata of the collection dan_petty.infra. `ansible-galaxy collection build ansible/` makes
-# dan_petty-infra-<version>.tar.gz from this folder. A consumer installs the collection from git at
-# a release tag of infra (README.md, "Pin a release").
 namespace: dan_petty
 name: infra
-version: 0.1.0
+version: 0.0.0
 readme: README.md
 authors:
   - dan-petty (https://github.com/dan-petty)
@@ -16,6 +13,6 @@ dependencies: {}
 repository: https://github.com/dan-petty/infra
 issues: https://github.com/dan-petty/infra/issues
 build_ignore:
-  - "*.tar.gz"
+  - '*.tar.gz'
   - .ansible
   - .ansible-lint

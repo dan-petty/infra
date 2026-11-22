@@ -27,14 +27,14 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `tf/examples/` | An example for each OpenTofu module. |
 | `renovate/` | Renovate presets that other repositories extend. |
 | `docs/` | Documents that apply to more than one template. |
-| `.github/workflows/` | CI (`ci.yml`) and the reusable workflow `k8s-validate.yml`. |
+| `.github/workflows/` | CI (`ci.yml`), the releases (`release.yml`) and the reusable workflow `k8s-validate.yml`. |
 
 The README of each folder tells its content and the consumers of each template. Each folder that
 a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` and
 `renovate/` get their first content with later items. The real templates come with later
 items, such as dan-petty/infra#6 (Renovate presets), #7 and #8 (Ansible roles and plays), #9
 (OpenTofu modules), #10 (a chart) and #11 to #19 (Kubernetes bases and components, and Helm values
-templates). dan-petty/infra#5 makes the release tags.
+templates).
 
 ## Pin a release
 
@@ -47,6 +47,49 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 | Ansible collection | `name: https://github.com/dan-petty/infra.git#/ansible/`, `type: git`, `version: vX.Y.Z` |
 | OpenTofu module | `git::https://github.com/dan-petty/infra.git//tf/modules/<module>?ref=vX.Y.Z` |
 | Reusable workflow | `uses: dan-petty/infra/.github/workflows/k8s-validate.yml@vX.Y.Z` |
+
+## Releases
+
+[release-please](https://github.com/googleapis/release-please-action) makes each release. On each
+push to `main`, `.github/workflows/release.yml` opens or updates one release pull request. It holds
+the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, and the
+new entry of `CHANGELOG.md`. When a person merges the release pull request, release-please creates
+the tag `vX.Y.Z` and its GitHub release. With the repository setting *immutable releases*, nobody can
+move or delete a published tag, so a pin always gets the same content.
+
+release-please reads the type of each commit on `main` since the last release. The largest change
+gives the next version. The merge settings of the repository decide if the pull request title or the
+commit subjects of the branch land on `main`. Thus write the pull request title and each commit
+subject as a Conventional Commit:
+
+| Commit | Next version |
+| --- | --- |
+| The first release | `v0.1.0` (`initial-version` of `release-please-config.json`) |
+| A breaking change: `!` after the type, or a `BREAKING CHANGE:` footer | The next major version. Renovate opens a major update as a separate pull request. |
+| `feat` | The next minor version |
+| `fix`, `perf` or `revert` | The next patch version |
+| `build`, `chore`, `ci`, `docs`, `refactor`, `style` or `test` | No release of its own |
+
+A change of a template input that a consumer must follow is a breaking change.
+
+`extra-files` of the package `.` in `release-please-config.json` lists the other files that get the
+new version:
+
+- `ansible/galaxy.yml` has the type `yaml` and the path `$.version`, so the release pull request
+  writes the new version into the key `version` of the collection. This updater writes the whole
+  file again with js-yaml: it removes each comment and can change the quotes of a string. Thus
+  `ansible/galaxy.yml` has no comments, and each string has the quotes that js-yaml writes.
+- To keep a file that names its own release tag current, put the comment `x-release-please-version`
+  on that line and add `{"type": "generic", "path": "<file>"}` to `extra-files`. The release pull
+  request then writes the new version on that line only. A YAML file also needs the type
+  `generic`: for a path with no type, release-please also sets a key `version` of the file with the
+  updater `yaml`, which removes the comments.
+
+The release App gives the token of the job, so the checks of `ci.yml` run on the release pull
+request. A pull request that `GITHUB_TOKEN` opens starts no workflow. The job runs in the
+environment `release`, which holds the variable `RELEASE_APP_CLIENT_ID` and the secret
+`RELEASE_APP_PRIVATE_KEY` of the App. When one of them is missing, the job stops with an error that
+names it.
 
 ## Call the reusable workflow
 

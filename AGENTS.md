@@ -17,6 +17,7 @@ This file is the single source of truth for AI agent instructions. [CLAUDE.md](.
 9. Place each template in the folder that the layout table names.
 10. Keep the `example` fixture of each folder passing.
 11. Keep the private-data guard passing: no real domain, host, address, or token.
+12. Write the pull request title and each commit subject that lands on `main` as a Conventional Commit. release-please reads their types for the next release version (README.md, "Releases").
 
 ## Where to look
 
@@ -25,3 +26,4 @@ This file is the single source of truth for AI agent instructions. [CLAUDE.md](.
 | Start a task or look up a rule | [README.md](./README.md) |
 | Add a template or a check | [README.md](./README.md) |
 | Pin a release or call a workflow | [README.md](./README.md) |
+| Make a release or choose a commit type | [README.md](./README.md) |
