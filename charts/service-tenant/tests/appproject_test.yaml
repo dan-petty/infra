@@ -66,8 +66,12 @@ tests:
             - { group: k8up.io, kind: Schedule }
             - { group: k8up.io, kind: PodConfig }
             - { group: k8up.io, kind: Restore }
-  - it: allows no Secret, no RBAC kind, no SecretStore and no ESO generator
+  - it: allows no Secret, no RBAC kind, no SecretStore and no ESO kind with no store
     asserts:
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: external-secrets.io }
+          any: true
       - notContains:
           path: spec.namespaceResourceWhitelist
           content: { kind: Secret }
@@ -92,6 +96,88 @@ tests:
           path: spec.namespaceResourceWhitelist
           content: { group: generators.external-secrets.io }
           any: true
+  - it: adds ExternalSecret, PushSecret and the generator Password, and no other kind, with the store
+    values:
+      - ../ci/store-values.yaml
+    set:
+      extraKinds: []
+    asserts:
+      - equal:
+          path: spec.namespaceResourceWhitelist
+          value:
+            - { group: apps, kind: Deployment }
+            - { group: apps, kind: StatefulSet }
+            - { group: batch, kind: Job }
+            - { group: batch, kind: CronJob }
+            - { group: "", kind: Service }
+            - { group: "", kind: ConfigMap }
+            - { group: "", kind: PersistentVolumeClaim }
+            - { group: "", kind: ServiceAccount }
+            - { group: networking.k8s.io, kind: Ingress }
+            - { group: networking.k8s.io, kind: NetworkPolicy }
+            - { group: policy, kind: PodDisruptionBudget }
+            - { group: autoscaling, kind: HorizontalPodAutoscaler }
+            - { group: traefik.io, kind: Middleware }
+            - { group: monitoring.coreos.com, kind: PodMonitor }
+            - { group: monitoring.coreos.com, kind: ServiceMonitor }
+            - { group: postgresql.cnpg.io, kind: Cluster }
+            - { group: postgresql.cnpg.io, kind: ScheduledBackup }
+            - { group: barmancloud.cnpg.io, kind: ObjectStore }
+            - { group: k8up.io, kind: Schedule }
+            - { group: k8up.io, kind: PodConfig }
+            - { group: k8up.io, kind: Restore }
+            - { group: external-secrets.io, kind: ExternalSecret }
+            - { group: external-secrets.io, kind: PushSecret }
+            - { group: generators.external-secrets.io, kind: Password }
+  - it: allows Password as the only generator and no SecretStore with the store
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: SecretStore }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: ClusterSecretStore }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: Webhook }
+          any: true
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: generators.external-secrets.io, kind: Password }
+          count: 1
+  - it: keeps the store namespace out of the destinations
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - equal:
+          path: spec.destinations
+          value:
+            - server: https://kubernetes.default.svc
+              namespace: example
+            - server: https://kubernetes.default.svc
+              namespace: example-db
+  - it: adds each ESO kind one time when extraKinds also has it
+    values:
+      - ../ci/store-values.yaml
+    set:
+      extraKinds:
+        - group: generators.external-secrets.io
+          kind: Password
+        - group: external-secrets.io
+          kind: ExternalSecret
+    asserts:
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: generators.external-secrets.io, kind: Password }
+          count: 1
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: external-secrets.io, kind: ExternalSecret }
+          count: 1
   - it: adds each extra kind one time
     set:
       extraKinds:

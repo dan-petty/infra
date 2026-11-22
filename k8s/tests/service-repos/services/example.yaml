@@ -17,3 +17,5 @@ images:
 extraKinds:
   - group: monitoring.coreos.com
     kind: PrometheusRule
+secrets:
+  store: true

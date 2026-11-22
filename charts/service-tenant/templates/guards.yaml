@@ -4,6 +4,8 @@ before the render. This template renders no object: it stops the render when the
 - names a project of reservedProjects: its AppProject would replace that project;
 - names a namespace of reservedNamespaces, the namespace of Argo CD or the namespace of the
   cluster DNS, or one namespace two times;
+- has the store (secrets.store) and its store namespace <name>-secrets has more than 63 characters,
+  is a namespace of the entry, or is reserved;
 - adds a forbidden extra kind: Secret, an RBAC kind, a SecretStore, or an ESO generator other than
   Password. The service can then read no Secret of another namespace and send no value out
   (devops-cli ADR 0033).
@@ -14,17 +16,29 @@ before the render. This template renders no object: it stops the render when the
 {{- end }}
 {{- $seen := list }}
 {{- range .Values.namespaces }}
-{{- if has .name $.Values.reservedNamespaces }}
-{{- fail (printf "service-tenant: the namespace %q is reserved (reservedNamespaces)" .name) }}
-{{- else if eq .name $.Values.argocd.namespace }}
-{{- fail (printf "service-tenant: the namespace %q is reserved (argocd.namespace)" .name) }}
-{{- else if eq .name $.Values.dns.namespace }}
-{{- fail (printf "service-tenant: the namespace %q is reserved (dns.namespace)" .name) }}
-{{- end }}
 {{- if has .name $seen }}
 {{- fail (printf "service-tenant: the entry names the namespace %q more than one time" .name) }}
 {{- end }}
 {{- $seen = append $seen .name }}
+{{- end }}
+{{- $checked := $seen }}
+{{- if include "service-tenant.store" . }}
+{{- $store := include "service-tenant.storeNamespace" . }}
+{{- if gt (len $store) 63 }}
+{{- fail (printf "service-tenant: the store namespace %q has more than 63 characters: give the service a name of 55 characters or less (secrets.store)" $store) }}
+{{- else if has $store $seen }}
+{{- fail (printf "service-tenant: the namespace %q is the store namespace of the service (secrets.store)" $store) }}
+{{- end }}
+{{- $checked = append $checked $store }}
+{{- end }}
+{{- range $checked }}
+{{- if has . $.Values.reservedNamespaces }}
+{{- fail (printf "service-tenant: the namespace %q is reserved (reservedNamespaces)" .) }}
+{{- else if eq . $.Values.argocd.namespace }}
+{{- fail (printf "service-tenant: the namespace %q is reserved (argocd.namespace)" .) }}
+{{- else if eq . $.Values.dns.namespace }}
+{{- fail (printf "service-tenant: the namespace %q is reserved (dns.namespace)" .) }}
+{{- end }}
 {{- end }}
 {{- $forbidden := list "Secret" "Role" "RoleBinding" "ClusterRole" "ClusterRoleBinding" "SecretStore" "ClusterSecretStore" }}
 {{- range .Values.extraKinds | default list }}

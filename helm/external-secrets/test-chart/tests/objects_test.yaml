@@ -1,0 +1,68 @@
+# The tests of the objects that the values template ../../values.yaml adds or turns off.
+suite: The objects of the values template of external-secrets
+release:
+  name: external-secrets
+tests:
+  - it: installs the CRDs of ESO with the CRD of PushSecret
+    template: charts/external-secrets/templates/crds/pushsecret.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          name: pushsecrets.external-secrets.io
+  - it: installs the CRD of the generator Password
+    template: charts/external-secrets/templates/crds/password.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          name: passwords.generators.external-secrets.io
+  - it: renders a metrics Service for the controller on port 8080
+    template: charts/external-secrets/templates/service.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: v1
+          kind: Service
+          name: external-secrets-metrics
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+  - it: renders no upstream NetworkPolicy
+    templates:
+      - charts/external-secrets/templates/networkpolicy.yaml
+      - charts/external-secrets/templates/webhook-networkpolicy.yaml
+      - charts/external-secrets/templates/cert-controller-networkpolicy.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: gives each pod a NetworkPolicy with one type, Ingress
+    template: charts/external-secrets/templates/extra-manifests.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.policyTypes
+          value:
+            - Ingress
+  - it: admits ingress only to the webhook port 10250 of the webhook pod
+    template: charts/external-secrets/templates/extra-manifests.yaml
+    asserts:
+      - notExists:
+          path: spec.ingress
+        documentIndex: 0
+      - notExists:
+          path: spec.ingress
+        documentIndex: 1
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/name"]
+          value: external-secrets-webhook
+        documentIndex: 2
+      - equal:
+          path: spec.ingress
+          value:
+            - ports:
+                - protocol: TCP
+                  port: 10250
+        documentIndex: 2

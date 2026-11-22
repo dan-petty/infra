@@ -1,0 +1,80 @@
+# The tests of the values template ../../values.yaml. scripts/k8s-validate.sh gives the template to
+# the dependency external-secrets with --values (helm/README.md).
+suite: The values template of external-secrets
+templates:
+  - charts/external-secrets/templates/deployment.yaml
+  - charts/external-secrets/templates/webhook-deployment.yaml
+  - charts/external-secrets/templates/cert-controller-deployment.yaml
+release:
+  name: external-secrets
+tests:
+  - it: runs each pod with the Pod Security level restricted
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+  - it: gives each container requests, limits and probes
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+      - exists:
+          path: spec.template.spec.containers[0].resources.requests.memory
+      - exists:
+          path: spec.template.spec.containers[0].resources.limits.memory
+      - exists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - exists:
+          path: spec.template.spec.containers[0].readinessProbe
+  - it: rolls each Deployment with the new pod first
+    asserts:
+      - equal:
+          path: spec.strategy
+          value:
+            type: RollingUpdate
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
+  - it: serves the metrics of each pod on port 8080
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: metrics
+            containerPort: 8080
+            protocol: TCP
+  - it: serves the admission webhook on port 10250
+    template: charts/external-secrets/templates/webhook-deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --port=10250
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: webhook
+            containerPort: 10250
+            protocol: TCP
+  - it: processes PushSecret objects with leader election
+    template: charts/external-secrets/templates/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-push-secret-reconciler=false
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-leader-election=true

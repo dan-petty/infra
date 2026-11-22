@@ -187,3 +187,62 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: the extra kind "Webhook" of generators.external-secrets.io is forbidden
+  - it: admits a service name of 55 characters with the store
+    values:
+      - ../ci/store-values.yaml
+    set:
+      name: a234567890123456789012345678901234567890123456789012345
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: refuses a store namespace of more than 63 characters
+    values:
+      - ../ci/store-values.yaml
+    set:
+      name: a2345678901234567890123456789012345678901234567890123456
+    asserts:
+      - failedTemplate:
+          errorPattern: the store namespace "a2345[0-9]+-secrets" has more than 63 characters
+  - it: admits a long service name with no store
+    values:
+      - ../ci/test-values.yaml
+    set:
+      name: a2345678901234567890123456789012345678901234567890123456
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: refuses a namespace of the entry that is the store namespace
+    values:
+      - ../ci/store-values.yaml
+    set:
+      namespaces:
+        - name: example
+        - name: example-secrets
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "example-secrets" is the store namespace of the service \(secrets.store\)
+  - it: refuses a store namespace that the consumer reserves
+    values:
+      - ../ci/store-values.yaml
+    set:
+      reservedNamespaces:
+        - example-secrets
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "example-secrets" is reserved \(reservedNamespaces\)
+  - it: refuses an unknown key in secrets
+    values:
+      - ../ci/store-values.yaml
+    set:
+      secrets:
+        remoteNamespace: other
+    asserts:
+      - failedTemplate:
+          errorPattern: remoteNamespace
+  - it: refuses the key secrets with no name
+    set:
+      secrets:
+        store: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "properties 'name' required, if 'secrets' exists"

@@ -6,6 +6,7 @@ templates:
   - templates/networkpolicy.yaml
   - templates/limitrange.yaml
   - templates/middleware.yaml
+  - templates/secretstore.yaml
 tests:
   - it: renders no object with the default values
     asserts:

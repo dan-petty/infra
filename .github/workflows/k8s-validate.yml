@@ -19,6 +19,8 @@ name: K8s Validate
 # one step of scripts/k8s-validate.sh, which a local run can also run (README.md, "Checks"):
 # kustomize build and helm template into kubeconform -strict (with the CRD schemas of the datreeio
 # CRDs-catalog), kube-linter and trivy config, and helm lint, helm unittest and promtool check rules.
+# A test chart of a values template gets the template under the name of its dependency
+# (helm/README.md).
 on:
   workflow_call:
     inputs:
@@ -38,6 +40,13 @@ on:
         default: ""
       promtool-rules:
         description: The Prometheus rule files to check, one on each line, relative to the repository root.
+        type: string
+        default: ""
+      trivy-ignorefile:
+        description: >-
+          The trivy ignore file of the caller, relative to the repository root, which trivy config gets
+          with --ignorefile. It holds the written judgments of the findings that the owner accepted.
+          Empty gives no ignore file.
         type: string
         default: ""
 
@@ -60,6 +69,7 @@ jobs:
       HELM_CHARTS: ${{ inputs.helm-charts }}
       KUBE_LINTER_CONFIG: ${{ inputs.kube-linter-config }}
       PROMTOOL_RULES: ${{ inputs.promtool-rules }}
+      TRIVY_IGNORE_FILE: ${{ inputs.trivy-ignorefile }}
 
     steps:
       - name: Check out the repository
@@ -98,7 +108,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$WORKFLOW_SHA"
           mise install --locked github:helm-unittest/helm-unittest helm kube-linter kubeconform kustomize \
-            promtool trivy
+            promtool trivy yq
           mise bin-paths >>"$GITHUB_PATH"
           echo "RENDERED=$RUNNER_TEMP/rendered" >>"$GITHUB_ENV"
           echo "K8S_VALIDATE=$PWD/scripts/k8s-validate.sh" >>"$GITHUB_ENV"

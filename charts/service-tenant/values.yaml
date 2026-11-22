@@ -48,3 +48,5 @@ limitRange:
 #     backup: false
 # images: []
 # extraKinds: []
+# secrets:
+#   store: false
