@@ -87,6 +87,15 @@ spec:
         files:
           - path: k8s/services/*.yaml
         pathParamPrefix: file
+      # The chart refuses a reserved project only for tenant-<name>. An entry with the name of an
+      # AppProject that exists, such as default, gets no Application <name> in that project.
+      selector:
+        matchExpressions:
+          - key: name
+            operator: NotIn
+            values:
+              - default
+              - services-admin
   syncPolicy:
     preserveResourcesOnDeletion: true
   # Image Updater writes the digest of each image into spec.source.kustomize.images of the

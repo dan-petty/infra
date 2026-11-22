@@ -98,6 +98,12 @@ for set in service-tenants service-workloads; do
     '[.spec.template | .. | select(tag == "!!str") | select(test("images"))]' '[]'
 done
 
+# The chart refuses a reserved project only for tenant-<name>. The selector keeps service-workloads
+# from putting the Application <name> into an AppProject that exists, such as default.
+expect "service-workloads: the selector refuses each reserved project of the chart" "$workloads" \
+  '[.spec.generators[0].selector.matchExpressions[] | select(.key == "name" and .operator == "NotIn") | .values[]] | sort' \
+  "$(yq -o json -I0 '.reservedProjects | sort' "$root/charts/service-tenant/values.yaml")"
+
 expect "service-tenants: project services-admin" "$tenants" '.spec.template.spec.project' '"services-admin"'
 expect "service-tenants: the chart pin is the release of version.txt" "$tenants" \
   '.spec.template.spec.sources[0] | [.repoURL, .path, .targetRevision]' \

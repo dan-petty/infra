@@ -58,7 +58,7 @@ stops the sync of `tenant-<name>`.
 
 | Key | Required | Content |
 | --- | --- | --- |
-| `name` | Yes | The name of the service: the name of the Applications `<name>` and `tenant-<name>`, and of the AppProject of the service. No other Application in the namespace `argocd` can have this name. |
+| `name` | Yes | The name of the service: the name of the Applications `<name>` and `tenant-<name>`, and of the AppProject of the service. No other Application in the namespace `argocd` can have this name. It is no AppProject of the cluster (`reservedProjects`): the chart refuses the entry for `tenant-<name>`, and the selector of `service-workloads` makes no Application `<name>`. |
 | `repoURL` | Yes | The git repository of the service. |
 | `path` | Yes | The folder of the manifests of the service in `repoURL`. For image updates, this is a Kustomize folder. |
 | `targetRevision` | Yes | The branch, tag or commit that Argo CD deploys. |
@@ -122,6 +122,7 @@ writes the new tag on the line `targetRevision` of the chart source in
 | The entry files | `k8s/services/*.yaml` | `spec.generators[0].git.files[0].path` of the two ApplicationSets. |
 | The platform values | `k8s/argocd/services/tenant-values.yaml` | `spec.template.spec.sources[0].helm.valueFiles[0]` of `service-tenants`. |
 | The reserved namespaces | `kube-system`, `kube-public`, `kube-node-lease`, `default` | Add a destination `namespace: '!<namespace>'` to `spec.destinations` of `services-admin` for each platform namespace of the cluster. Do not deny `argocd`: a deny destination refuses a namespace although another destination admits it. |
+| The reserved projects | `default`, `services-admin` | Add each AppProject of `reservedProjects` to `values` of the `NotIn` expression of `spec.generators[0].selector` of `service-workloads`. |
 | The cluster | `https://kubernetes.default.svc` | `server` of each destination of `services-admin` and of the two templates. |
 
 The platform values file holds the platform values of the chart (charts/service-tenant/README.md,
