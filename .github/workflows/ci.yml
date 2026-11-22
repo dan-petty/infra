@@ -150,6 +150,11 @@ jobs:
     with:
       kustomize-roots: |
         k8s/tests/example
+        k8s/tests/valkey
+        k8s/tests/valkey-persistence
+        k8s/tests/valkey-exporter
+        k8s/tests/valkey-acl
+        k8s/tests/valkey-full
       helm-charts: |
         charts/example
         charts/service-tenant

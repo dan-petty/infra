@@ -1,0 +1,41 @@
+# Each NetworkPolicy has one policy type. The network policy controller of k3s (kube-router) lets
+# an egress rule of a policy with the types Ingress and Egress admit traffic between two pods that
+# the policy selects, also when its ingress rules refuse that traffic (dan-petty/devops-cli#6707).
+# It applies a policy of one type correctly.
+#
+# Ingress: only a pod of the namespace with the label valkey-client: "true" reaches Valkey.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: valkey-ingress
+  labels:
+    app.kubernetes.io/name: valkey
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              valkey-client: "true"
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+# Egress: none. Valkey only answers, and the exporter of valkey-exporter reaches it on localhost.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: valkey-egress
+  labels:
+    app.kubernetes.io/name: valkey
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+  policyTypes:
+    - Egress
+  egress: []

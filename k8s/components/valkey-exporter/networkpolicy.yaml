@@ -1,0 +1,23 @@
+# Ingress only, as each NetworkPolicy of the base (k8s/bases/valkey/networkpolicy.yaml): the pods
+# of the namespace monitoring reach the metrics port. A consumer with its scraper in another
+# namespace patches the namespace selector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: valkey-exporter-ingress
+  labels:
+    app.kubernetes.io/name: valkey
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9121

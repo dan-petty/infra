@@ -1,0 +1,113 @@
+# One Valkey pod. It runs with the restricted Pod Security Standard and a read-only root file
+# system, and writes only to its volumes: /data, /tmp and the memory volume /run/valkey.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valkey
+  labels:
+    app.kubernetes.io/name: valkey
+  annotations:
+    ignore-check.kube-linter.io/no-rolling-update-strategy: >-
+      Recreate: one Valkey pod writes the data. The old pod stops before the new pod starts, so two
+      pods never write to the same volume.
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valkey
+    spec:
+      automountServiceAccountToken: false
+      # Kubernetes adds no variables of the Services of the namespace to the containers.
+      enableServiceLinks: false
+      # The user valkey of the image (999) and its group (1000).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: valkey
+          # The tag and the digest are in images: of kustomization.yaml.
+          image: docker.io/valkey/valkey
+          imagePullPolicy: IfNotPresent
+          # The script writes the password into a config file on the memory volume /run/valkey, not
+          # onto the command line, where the process list shows it. That file includes valkey.conf
+          # of the ConfigMap. valkey-server gets each item of args as one more option, such as the
+          # aclfile of valkey-acl. The password has no double quote, backslash or line break.
+          command:
+            - sh
+            - -c
+            - |
+              umask 077
+              printf 'include /etc/valkey/valkey.conf\nrequirepass "%s"\n' "$VALKEY_PASSWORD" >/run/valkey/valkey.conf
+              exec valkey-server /run/valkey/valkey.conf "$@"
+            - valkey-server
+          args: []
+          env:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: valkey-auth
+                  key: password
+          ports:
+            - name: valkey
+              containerPort: 6379
+              protocol: TCP
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run/valkey
+            - name: config
+              mountPath: /etc/valkey/valkey.conf
+              subPath: valkey.conf
+              readOnly: true
+      volumes:
+        # valkey-persistence replaces this volume with the claim valkey-data.
+        - name: data
+          emptyDir: {}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: run
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: config
+          configMap:
+            name: valkey
