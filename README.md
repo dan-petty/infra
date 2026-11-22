@@ -61,7 +61,7 @@ push to `main`, `.github/workflows/release.yml` opens or updates one release pul
 the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, the
 next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and the new entry of
 `CHANGELOG.md`. When a person merges the release pull request, release-please creates the tag
-`vX.Y.Z` and its GitHub release. With the repository setting *immutable releases*, nobody can move
+`vX.Y.Z` and its GitHub release. `.github/CODEOWNERS` names `dan-petty` as the owner of each file, so GitHub asks dan-petty to review each pull request when it opens, the release pull request too. With the repository setting *immutable releases*, nobody can move
 or delete a published tag, so a pin always gets the same content.
 
 release-please reads the type of each commit on `main` since the last release. The largest change
@@ -100,13 +100,6 @@ request. A pull request that `GITHUB_TOKEN` opens starts no workflow. The job ru
 environment `release`, which holds the variable `RELEASE_APP_CLIENT_ID` and the secret
 `RELEASE_APP_PRIVATE_KEY` of the App. When one of them is missing, the job stops with an error that
 names it.
-
-release-please requests no reviewer. When a run opens or updates the release pull request (the
-output `pr` of release-please), the next step of the job asks `dan-petty` to review it, with the
-same token of the release App. That token has write access to pull requests, which the review
-request needs. The step asks no review when `dan-petty` is already a requested reviewer or has
-reviewed the pull request. No workflow approves the release pull request, and no other App key is
-in the repository.
 
 ## Call the reusable workflow
 

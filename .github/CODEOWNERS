@@ -1,0 +1,3 @@
+# GitHub asks each code owner to review a pull request when it opens, the release pull request
+# of release-please too. It needs no workflow step and no key.
+* @dan-petty

@@ -2,9 +2,8 @@ name: Release
 
 # release-please makes each release of infra (README.md, "Releases"). On each push to main it opens
 # or updates one release pull request, which holds the next version in version.txt,
-# .release-please-manifest.json and ansible/galaxy.yml, and the new entry of CHANGELOG.md, and asks
-# dan-petty to review it. When a person merges that pull request, the next run creates the tag
-# vX.Y.Z and its GitHub release.
+# .release-please-manifest.json and ansible/galaxy.yml, and the new entry of CHANGELOG.md. When a
+# person merges that pull request, the next run creates the tag vX.Y.Z and its GitHub release.
 on:
   push:
     branches:
@@ -60,40 +59,14 @@ jobs:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           # The token gets only what release-please-action documents: the release pull request,
-          # its labels, the CHANGELOG.md and version commits, the tag and the GitHub release. The
-          # write access to pull requests also lets the last step request a review.
+          # its labels, the CHANGELOG.md and version commits, the tag and the GitHub release.
           permission-contents: write
           permission-issues: write
           permission-pull-requests: write
 
       - name: Run release-please
-        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-      # release-please requests no reviewer. The output pr holds the release pull request only when
-      # this run opened or updated it. This step asks dan-petty to review it, unless dan-petty is
-      # already a requested reviewer or has reviewed it. The runner evaluates the env of a step
-      # before its if, and fromJSON fails on an empty output. Thus PR_NUMBER calls fromJSON only
-      # when the output pr is set; && stops at the first empty value.
-      - name: Request the review of dan-petty
-        if: steps.release.outputs.pr != ''
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          PR_NUMBER: ${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).number }}
-          REVIEWER: dan-petty
-        run: |
-          pr="repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER"
-          requested="$(gh api "$pr/requested_reviewers" --jq '.users[].login')"
-          reviewed="$(gh api --paginate "$pr/reviews" --jq '.[].user.login')"
-          if grep -Fixq -- "$REVIEWER" <<<"$requested"; then
-            echo "$REVIEWER is already a requested reviewer of pull request #$PR_NUMBER."
-          elif grep -Fixq -- "$REVIEWER" <<<"$reviewed"; then
-            echo "$REVIEWER has already reviewed pull request #$PR_NUMBER."
-          else
-            gh api --method POST "$pr/requested_reviewers" -f "reviewers[]=$REVIEWER" --silent
-            echo "Requested the review of $REVIEWER on pull request #$PR_NUMBER."
-          fi
