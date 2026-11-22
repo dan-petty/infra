@@ -76,12 +76,14 @@ jobs:
 
       # release-please requests no reviewer. The output pr holds the release pull request only when
       # this run opened or updated it. This step asks dan-petty to review it, unless dan-petty is
-      # already a requested reviewer or has reviewed it.
+      # already a requested reviewer or has reviewed it. The runner evaluates the env of a step
+      # before its if, and fromJSON fails on an empty output. Thus PR_NUMBER calls fromJSON only
+      # when the output pr is set; && stops at the first empty value.
       - name: Request the review of dan-petty
         if: steps.release.outputs.pr != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+          PR_NUMBER: ${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).number }}
           REVIEWER: dan-petty
         run: |
           pr="repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER"
