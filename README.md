@@ -35,10 +35,11 @@ first content with a later item. The fixture of `renovate/` is `tests/renovate/`
 templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
 `charts/service-tenant` (dan-petty/infra#10), the Ansible roles `nvidia`, `gvisor` and
 `cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey` with its components
-`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13), and the base
-`k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)). More
-templates come with later items, such as #8 (the Ansible role common and plays), #9 (OpenTofu
-modules) and #12 and #14 to #19 (Kubernetes bases and components, and Helm values templates).
+`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13), the base
+`k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)), and
+the OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9).
+More templates come with later items, such as #8 (the Ansible role common and plays) and #12 and
+#14 to #19 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release
 
@@ -165,7 +166,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
 | K8s templates | `mise exec -- tests/test-service-repos.sh` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
-| OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and `tofu init -backend=false` and `tofu validate` in each folder of `tf/examples/` |
+| OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file; a bare `trivy config tf/` gets no variable values and reports GCP-0061), then `tofu init -backend=false` and `tofu validate` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
 | YAML | `.venv/bin/yamllint --strict .` |
 | actionlint | `mise exec -- actionlint` |

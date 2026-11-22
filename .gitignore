@@ -3,9 +3,9 @@
 # The caches of ansible-lint and ansible-galaxy, and the collection that ansible-galaxy builds.
 .ansible/
 dan_petty-infra-*.tar.gz
-# The providers and modules of tofu init. The examples use no provider, so they have no lock file.
+# The providers and modules of tofu init. The lock file .terraform.lock.hcl of each example stays in
+# git: it pins each provider at one version with its checksums, and Renovate updates it.
 .terraform/
-.terraform.lock.hcl
 # The upstream charts of helm dependency build. Chart.lock stays in git.
 charts/*/charts/
 helm/*/charts/
