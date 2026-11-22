@@ -61,7 +61,7 @@ push to `main`, `.github/workflows/release.yml` opens or updates one release pul
 the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, the
 next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and the new entry of
 `CHANGELOG.md`. When a person merges the release pull request, release-please creates the tag
-`vX.Y.Z` and its GitHub release. With the repository setting *immutable releases*, nobody can move
+`vX.Y.Z` and its GitHub release. `.github/CODEOWNERS` names `dan-petty` as the owner of each file, so GitHub asks dan-petty to review each pull request when it opens, the release pull request too. With the repository setting *immutable releases*, nobody can move
 or delete a published tag, so a pin always gets the same content.
 
 release-please reads the type of each commit on `main` since the last release. The largest change
