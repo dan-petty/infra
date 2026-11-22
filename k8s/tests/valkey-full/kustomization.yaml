@@ -1,0 +1,11 @@
+# The test overlay of the base valkey with all its components: valkey-persistence, valkey-exporter
+# and valkey-acl.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: example
+resources:
+  - ../../bases/valkey
+components:
+  - ../../components/valkey-persistence
+  - ../../components/valkey-exporter
+  - ../../components/valkey-acl

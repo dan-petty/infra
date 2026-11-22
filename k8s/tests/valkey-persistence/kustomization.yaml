@@ -1,0 +1,15 @@
+# The test overlay of the component valkey-persistence: a queue store. The claim keeps the data
+# across a restart, and valkey.conf of this folder replaces the settings of the base (appendonly
+# yes, maxmemory-policy noeviction).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: example
+resources:
+  - ../../bases/valkey
+components:
+  - ../../components/valkey-persistence
+configMapGenerator:
+  - name: valkey
+    behavior: merge
+    files:
+      - valkey.conf

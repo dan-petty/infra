@@ -1,0 +1,13 @@
+# The component valkey-exporter of the base valkey: a redis_exporter sidecar that gives the metrics
+# of Valkey on port 9121, and the NetworkPolicy that admits the scraper to that port
+# (k8s/bases/valkey/README.md).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - networkpolicy.yaml
+patches:
+  - path: deployment.yaml
+# The image of the exporter, with a tag and a digest in newTag, as in the base valkey.
+images:
+  - name: ghcr.io/oliver006/redis_exporter
+    newTag: v1.98.0@sha256:2b68665248d909bb25de9d175c648932a8c358ba143e5dbed1eb48f91cc9d2e1

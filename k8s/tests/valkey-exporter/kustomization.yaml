@@ -1,0 +1,8 @@
+# The test overlay of the component valkey-exporter: the base with the redis_exporter sidecar.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: example
+resources:
+  - ../../bases/valkey
+components:
+  - ../../components/valkey-exporter

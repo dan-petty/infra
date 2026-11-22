@@ -32,9 +32,11 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 The README of each folder tells its content and the consumers of each template. Each folder that
 a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` gets its
 first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
-templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6) and the chart
-`charts/service-tenant` (dan-petty/infra#10). More templates come with later items, such as #7 and #8 (Ansible roles and plays), #9 (OpenTofu modules) and #11 to #19
-(Kubernetes bases and components, and Helm values templates).
+templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
+`charts/service-tenant` (dan-petty/infra#10), and the base `k8s/bases/valkey` with its components
+`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13). More templates come
+with later items, such as #7 and #8 (Ansible roles and plays), #9 (OpenTofu modules) and #11, #12
+and #14 to #19 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release
 
@@ -154,7 +156,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | Job | Command |
 | --- | --- |
 | Private-data guard | `mise exec -- tests/test-private-data-scan.sh` and `mise exec -- scripts/private-data-scan.sh dir .` |
-| K8s | `KUSTOMIZE_ROOTS=k8s/tests/example HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
+| K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and `tofu init -backend=false` and `tofu validate` in each folder of `tf/examples/` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/` |

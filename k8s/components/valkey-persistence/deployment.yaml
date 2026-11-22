@@ -1,0 +1,13 @@
+# The volume data of the base gets the claim valkey-data in place of its emptyDir.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valkey
+spec:
+  template:
+    spec:
+      volumes:
+        - name: data
+          emptyDir: null
+          persistentVolumeClaim:
+            claimName: valkey-data
