@@ -1,0 +1,47 @@
+{{- /*
+The default-deny posture of each namespace: no ingress, and egress only to the cluster DNS. The
+service adds its own allow policies. Each policy has one type: the network policy controller of
+k3s lets an egress rule of a policy with both types admit traffic between two pods that the policy
+selects, although its ingress rules deny it (dan-petty/devops-cli#6707).
+*/ -}}
+{{- if .Values.name }}
+{{- range .Values.namespaces }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: {{ .name }}
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: {{ .name }}
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.dns.namespace }}
+          podSelector:
+            matchLabels:
+              {{- toYaml $.Values.dns.podLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
+{{- end }}

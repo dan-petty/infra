@@ -1,0 +1,61 @@
+{{- /*
+The AppProject of the service. The service Application deploys only from the repository of the
+service, only into the namespaces of the service, and only the namespaced kinds of the allow-list.
+The list holds no Secret, no RBAC kind and no SecretStore, and no cluster-scoped kind is allowed.
+*/ -}}
+{{- if .Values.name }}
+{{- $kinds := list
+  (dict "group" "apps" "kind" "Deployment")
+  (dict "group" "apps" "kind" "StatefulSet")
+  (dict "group" "batch" "kind" "Job")
+  (dict "group" "batch" "kind" "CronJob")
+  (dict "group" "" "kind" "Service")
+  (dict "group" "" "kind" "ConfigMap")
+  (dict "group" "" "kind" "PersistentVolumeClaim")
+  (dict "group" "" "kind" "ServiceAccount")
+  (dict "group" "networking.k8s.io" "kind" "Ingress")
+  (dict "group" "networking.k8s.io" "kind" "NetworkPolicy")
+  (dict "group" "policy" "kind" "PodDisruptionBudget")
+  (dict "group" "autoscaling" "kind" "HorizontalPodAutoscaler")
+  (dict "group" "traefik.io" "kind" "Middleware")
+  (dict "group" "monitoring.coreos.com" "kind" "PodMonitor")
+  (dict "group" "monitoring.coreos.com" "kind" "ServiceMonitor")
+  (dict "group" "postgresql.cnpg.io" "kind" "Cluster")
+  (dict "group" "postgresql.cnpg.io" "kind" "ScheduledBackup")
+  (dict "group" "barmancloud.cnpg.io" "kind" "ObjectStore")
+  (dict "group" "k8up.io" "kind" "Schedule")
+  (dict "group" "k8up.io" "kind" "PodConfig")
+  (dict "group" "k8up.io" "kind" "Restore")
+}}
+{{- range .Values.extraKinds | default list }}
+{{- $kinds = append $kinds (dict "group" .group "kind" .kind) }}
+{{- end }}
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "service-tenant.labels" . | nindent 4 }}
+  annotations:
+    # The GitHub service of Argo CD notifications writes the deploy status of each Application of
+    # the project to the repository of its source.
+    notifications.argoproj.io/subscribe.on-deployed.github: ""
+spec:
+  description: {{ printf "The service %s." .Values.name | quote }}
+  sourceRepos:
+    - {{ .Values.repoURL | quote }}
+  destinations:
+    {{- range .Values.namespaces }}
+    - server: {{ $.Values.argocd.destinationServer | quote }}
+      namespace: {{ .name }}
+    {{- end }}
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    {{- range $kinds | uniq }}
+    - group: {{ .group | quote }}
+      kind: {{ .kind }}
+    {{- end }}
+  orphanedResources:
+    warn: true
+{{- end }}

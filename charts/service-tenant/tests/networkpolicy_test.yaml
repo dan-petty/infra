@@ -1,0 +1,95 @@
+suite: Default-deny NetworkPolicies of each namespace
+templates:
+  - templates/networkpolicy.yaml
+values:
+  - ../ci/test-values.yaml
+tests:
+  - it: renders an ingress policy and an egress policy in each namespace
+    asserts:
+      - hasDocuments:
+          count: 4
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: metadata.name
+          value: default-deny-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: example
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: default-deny-egress
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: example
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: example-db
+        documentIndex: 2
+      - equal:
+          path: metadata.namespace
+          value: example-db
+        documentIndex: 3
+  # The network policy controller of k3s lets an egress rule of a policy with both types admit
+  # traffic between two pods that the policy selects, although its ingress rules deny it
+  # (dan-petty/devops-cli#6707). Each policy has one type.
+  - it: gives each policy one type only
+    asserts:
+      - lengthEqual:
+          path: spec.policyTypes
+          count: 1
+      - equal:
+          path: spec.podSelector
+          value: {}
+  - it: denies each ingress
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.policyTypes
+          value: [Ingress]
+      - notExists:
+          path: spec.ingress
+  - it: allows only DNS egress to the pods of the cluster DNS
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec.policyTypes
+          value: [Egress]
+      - equal:
+          path: spec.egress
+          value:
+            - to:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: kube-system
+                  podSelector:
+                    matchLabels:
+                      k8s-app: kube-dns
+              ports:
+                - protocol: UDP
+                  port: 53
+                - protocol: TCP
+                  port: 53
+  - it: uses the DNS values of the consumer
+    documentIndex: 1
+    set:
+      dns:
+        namespace: dns
+        podLabels:
+          # Helm merges maps: null removes the default label.
+          k8s-app: null
+          app.kubernetes.io/name: coredns
+    asserts:
+      - equal:
+          path: spec.egress[0].to[0]
+          value:
+            namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: dns
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: coredns

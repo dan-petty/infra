@@ -1,0 +1,7 @@
+apiVersion: v2
+name: service-tenant
+description: >-
+  The tenant of one service repository in the cluster: its Namespaces, its Argo CD AppProject and the
+  guard rails of each namespace.
+type: application
+version: 0.1.0

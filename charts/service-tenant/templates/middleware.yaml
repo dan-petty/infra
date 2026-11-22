@@ -1,0 +1,27 @@
+{{- /*
+The security headers of each namespace. An Ingress of the service names the Middleware in its
+annotation traefik.ingress.kubernetes.io/router.middlewares:
+<namespace>-security-headers@kubernetescrd. HSTS has no preload, so a domain never goes into the
+preload list of the browsers by accident.
+*/ -}}
+{{- if .Values.name }}
+{{- range .Values.namespaces }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: {{ .name }}
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  headers:
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: false
+    contentTypeNosniff: true
+    customFrameOptionsValue: SAMEORIGIN
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+{{- end }}
+{{- end }}

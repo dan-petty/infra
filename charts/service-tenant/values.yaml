@@ -1,0 +1,50 @@
+# The values of the chart are the platform values of the consumer and one services entry
+# (README.md). The consumer sets its platform values in one file and gives the services entry of
+# each service in a second file. With no services entry, the chart renders no object.
+
+# Platform values.
+
+# The namespaces that no services entry can use. The consumer adds the platform namespaces of its
+# cluster. The chart also refuses argocd.namespace and dns.namespace.
+reservedNamespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - default
+  - argocd
+# The AppProjects that no services entry can replace. The consumer adds the AppProjects of its
+# cluster.
+reservedProjects:
+  - default
+  - services-admin
+argocd:
+  # The namespace of Argo CD, which holds the AppProject of each service.
+  namespace: argocd
+  # The destination server of the AppProject: the cluster of Argo CD.
+  destinationServer: https://kubernetes.default.svc
+# The cluster DNS: the only egress destination of the default policy of each namespace. Helm merges
+# maps, so a consumer with other DNS pod labels sets `k8s-app: null` to remove the default label.
+dns:
+  namespace: kube-system
+  podLabels:
+    k8s-app: kube-dns
+# The default requests and limits of each container in a service namespace.
+limitRange:
+  default:
+    cpu: 500m
+    memory: 256Mi
+  defaultRequest:
+    cpu: 50m
+    memory: 64Mi
+
+# The services entry: one file in the environment repository for each service (README.md).
+# name: example
+# repoURL: https://git.example.com/example.git
+# path: deploy
+# targetRevision: main
+# namespaces:
+#   - name: example
+#     podSecurity: restricted
+#     backup: false
+# images: []
+# extraKinds: []

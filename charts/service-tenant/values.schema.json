@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Values of the chart service-tenant",
+  "description": "The platform values of the consumer and one services entry. Each platform value is required. An entry key needs all the required entry keys: with no entry key, the chart renders no object.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reservedNamespaces", "reservedProjects", "argocd", "dns", "limitRange"],
+  "dependentRequired": {
+    "name": ["repoURL", "path", "targetRevision", "namespaces"],
+    "repoURL": ["name"],
+    "path": ["name"],
+    "targetRevision": ["name"],
+    "namespaces": ["name"],
+    "images": ["name"],
+    "extraKinds": ["name"]
+  },
+  "properties": {
+    "reservedNamespaces": {
+      "description": "The namespaces that no services entry can use.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/dnsLabel" },
+      "uniqueItems": true
+    },
+    "reservedProjects": {
+      "description": "The AppProjects that no services entry can replace.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/dnsLabel" },
+      "uniqueItems": true
+    },
+    "argocd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "destinationServer"],
+      "properties": {
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "destinationServer": { "type": "string", "pattern": "^https://[^\\s*?\\[\\]{}!]+$" }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "podLabels"],
+      "properties": {
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "podLabels": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "limitRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "defaultRequest"],
+      "properties": {
+        "default": { "$ref": "#/$defs/resources" },
+        "defaultRequest": { "$ref": "#/$defs/resources" }
+      }
+    },
+    "name": {
+      "description": "The name of the service, and of its AppProject.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "repoURL": {
+      "description": "The git repository of the service: the only source of its AppProject. No glob and no negation.",
+      "type": "string",
+      "pattern": "^[^\\s*?\\[\\]{}!]+$"
+    },
+    "path": {
+      "description": "The folder of the manifests of the service in repoURL.",
+      "type": "string",
+      "minLength": 1
+    },
+    "targetRevision": {
+      "description": "The branch, tag or commit of repoURL that Argo CD deploys.",
+      "type": "string",
+      "minLength": 1
+    },
+    "namespaces": {
+      "description": "The namespaces of the service. The first one is the destination of the service Application.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "$ref": "#/$defs/dnsLabel" },
+          "podSecurity": {
+            "description": "The Pod Security level that the namespace enforces. warn and audit are always restricted.",
+            "enum": ["restricted", "baseline"]
+          },
+          "backup": {
+            "description": "true gives the namespace the label backup-client, which opens the object store to it.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "images": {
+      "description": "The images of the service that Argo CD Image Updater updates.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["alias", "image"],
+        "properties": {
+          "alias": { "$ref": "#/$defs/dnsLabel" },
+          "image": { "type": "string", "pattern": "^[^\\s,=]+$" }
+        }
+      }
+    },
+    "extraKinds": {
+      "description": "Namespaced kinds that an admin reviewed and adds to the AppProject. The chart refuses the Secret, RBAC and SecretStore kinds and each ESO generator but Password.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group", "kind"],
+        "properties": {
+          "group": {
+            "description": "The API group. An empty string is the core group. No glob.",
+            "type": "string",
+            "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)?$"
+          },
+          "kind": {
+            "description": "The kind. No glob.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": { "type": "string", "minLength": 1 },
+        "memory": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

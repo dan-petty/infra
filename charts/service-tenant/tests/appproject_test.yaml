@@ -1,0 +1,141 @@
+suite: AppProject of the service
+templates:
+  - templates/appproject.yaml
+values:
+  - ../ci/test-values.yaml
+tests:
+  - it: renders the AppProject of the service in the namespace of Argo CD
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: AppProject
+      - isAPIVersion:
+          of: argoproj.io/v1alpha1
+      - equal:
+          path: metadata.name
+          value: example
+      - equal:
+          path: metadata.namespace
+          value: argocd
+  - it: allows only the repository of the service as a source
+    asserts:
+      - equal:
+          path: spec.sourceRepos
+          value:
+            - https://git.example.com/example.git
+  - it: allows only the namespaces of the service on the local cluster as destinations
+    asserts:
+      - equal:
+          path: spec.destinations
+          value:
+            - server: https://kubernetes.default.svc
+              namespace: example
+            - server: https://kubernetes.default.svc
+              namespace: example-db
+  - it: allows no cluster-scoped kind
+    asserts:
+      - equal:
+          path: spec.clusterResourceWhitelist
+          value: []
+  - it: allows only the namespaced kinds of the allow-list
+    set:
+      extraKinds: []
+    asserts:
+      - equal:
+          path: spec.namespaceResourceWhitelist
+          value:
+            - { group: apps, kind: Deployment }
+            - { group: apps, kind: StatefulSet }
+            - { group: batch, kind: Job }
+            - { group: batch, kind: CronJob }
+            - { group: "", kind: Service }
+            - { group: "", kind: ConfigMap }
+            - { group: "", kind: PersistentVolumeClaim }
+            - { group: "", kind: ServiceAccount }
+            - { group: networking.k8s.io, kind: Ingress }
+            - { group: networking.k8s.io, kind: NetworkPolicy }
+            - { group: policy, kind: PodDisruptionBudget }
+            - { group: autoscaling, kind: HorizontalPodAutoscaler }
+            - { group: traefik.io, kind: Middleware }
+            - { group: monitoring.coreos.com, kind: PodMonitor }
+            - { group: monitoring.coreos.com, kind: ServiceMonitor }
+            - { group: postgresql.cnpg.io, kind: Cluster }
+            - { group: postgresql.cnpg.io, kind: ScheduledBackup }
+            - { group: barmancloud.cnpg.io, kind: ObjectStore }
+            - { group: k8up.io, kind: Schedule }
+            - { group: k8up.io, kind: PodConfig }
+            - { group: k8up.io, kind: Restore }
+  - it: allows no Secret, no RBAC kind, no SecretStore and no ESO generator
+    asserts:
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: Secret }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: Role }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: RoleBinding }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: rbac.authorization.k8s.io }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { kind: SecretStore }
+          any: true
+      - notContains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: generators.external-secrets.io }
+          any: true
+  - it: adds each extra kind one time
+    set:
+      extraKinds:
+        - group: monitoring.coreos.com
+          kind: PrometheusRule
+        - group: apps
+          kind: Deployment
+    asserts:
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: monitoring.coreos.com, kind: PrometheusRule }
+          count: 1
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: apps, kind: Deployment }
+          count: 1
+  - it: admits the ESO generator Password as an extra kind
+    set:
+      extraKinds:
+        - group: generators.external-secrets.io
+          kind: Password
+    asserts:
+      - contains:
+          path: spec.namespaceResourceWhitelist
+          content: { group: generators.external-secrets.io, kind: Password }
+  - it: warns about orphaned resources
+    asserts:
+      - equal:
+          path: spec.orphanedResources.warn
+          value: true
+  - it: sends the deploy status of each Application of the project to its repository
+    asserts:
+      - equal:
+          path: metadata.annotations["notifications.argoproj.io/subscribe.on-deployed.github"]
+          value: ""
+  - it: uses the Argo CD values of the consumer
+    set:
+      argocd:
+        namespace: gitops
+        destinationServer: https://k8s.example.com:6443
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: gitops
+      - equal:
+          path: spec.destinations[0].server
+          value: https://k8s.example.com:6443

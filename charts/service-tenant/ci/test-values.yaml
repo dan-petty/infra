@@ -1,0 +1,17 @@
+# The values of the test render of k8s-validate.yml: helm lint and helm template run once for each
+# ci/*-values.yaml file of a chart. One services entry with two namespaces.
+name: example
+repoURL: https://git.example.com/example.git
+path: deploy
+targetRevision: main
+namespaces:
+  - name: example
+  - name: example-db
+    podSecurity: baseline
+    backup: true
+images:
+  - alias: web
+    image: registry.example.com/example/web
+extraKinds:
+  - group: monitoring.coreos.com
+    kind: PrometheusRule
