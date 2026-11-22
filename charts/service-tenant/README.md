@@ -109,5 +109,6 @@ K8s job of CI runs them (README.md of the repository, "Checks").
 
 ## Consumers
 
-None yet. The services ApplicationSet of dan-petty/infra#11 is the planned consumer, for each
-service repository of dan-petty/homelab#80.
+The ApplicationSet `service-tenants` of the base `k8s/bases/service-repos` renders the chart for
+each services entry ([docs/service-repos.md](../../docs/service-repos.md)). Its planned consumer is
+dan-petty/homelab#80.

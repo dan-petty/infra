@@ -1,0 +1,19 @@
+# A services entry with each key, as the file k8s/services/example.yaml of the environment
+# repository (docs/service-repos.md).
+name: example
+repoURL: https://git.example.com/example.git
+path: deploy
+targetRevision: main
+namespaces:
+  - name: example
+  - name: example-db
+    podSecurity: baseline
+    backup: true
+images:
+  - alias: web
+    image: registry.example.com/example/web:main
+  - alias: worker
+    image: registry.example.com/example/worker:main
+extraKinds:
+  - group: monitoring.coreos.com
+    kind: PrometheusRule

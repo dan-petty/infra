@@ -11,6 +11,10 @@
           "type": "yaml",
           "path": "ansible/galaxy.yml",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "k8s/bases/service-repos/applicationsets.yaml"
         }
       ]
     }

@@ -34,10 +34,11 @@ a CI job checks has an `example` fixture, so CI proves that each check runs; `he
 first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
 templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
 `charts/service-tenant` (dan-petty/infra#10), the Ansible roles `nvidia`, `gvisor` and
-`cpu_tuning` (dan-petty/infra#7), and the base `k8s/bases/valkey` with its components
-`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13). More templates come with later items, such as #8 (the Ansible
-role common and plays), #9 (OpenTofu modules) and #11 to #19 (Kubernetes bases and components, and
-Helm values templates).
+`cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey` with its components
+`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13), and the base
+`k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)). More
+templates come with later items, such as #8 (the Ansible role common and plays), #9 (OpenTofu
+modules) and #12 and #14 to #19 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release
 
@@ -55,10 +56,11 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 
 [release-please](https://github.com/googleapis/release-please-action) makes each release. On each
 push to `main`, `.github/workflows/release.yml` opens or updates one release pull request. It holds
-the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, and the
-new entry of `CHANGELOG.md`. When a person merges the release pull request, release-please creates
-the tag `vX.Y.Z` and its GitHub release. With the repository setting *immutable releases*, nobody can
-move or delete a published tag, so a pin always gets the same content.
+the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, the
+next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and the new entry of
+`CHANGELOG.md`. When a person merges the release pull request, release-please creates the tag
+`vX.Y.Z` and its GitHub release. With the repository setting *immutable releases*, nobody can move
+or delete a published tag, so a pin always gets the same content.
 
 release-please reads the type of each commit on `main` since the last release. The largest change
 gives the next version. The merge settings of the repository decide if the pull request title or the
@@ -86,7 +88,10 @@ new version:
   on that line and add `{"type": "generic", "path": "<file>"}` to `extra-files`. The release pull
   request then writes the new version on that line only. A YAML file also needs the type
   `generic`: for a path with no type, release-please also sets a key `version` of the file with the
-  updater `yaml`, which removes the comments.
+  updater `yaml`, which removes the comments. `k8s/bases/service-repos/applicationsets.yaml` pins
+  the chart `charts/service-tenant` this way, so each release tag of the base names the chart of the
+  same tag. `tests/test-service-repos.sh` checks that the pin is `v` and the version of
+  `version.txt`.
 
 The release App gives the token of the job, so the checks of `ci.yml` run on the release pull
 request. A pull request that `GITHUB_TOKEN` opens starts no workflow. The job runs in the
@@ -133,7 +138,7 @@ PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `Dele
 
 The repository pins each tool of the checks. `mise.toml` and `mise.lock` pin the binary tools
 (actionlint, gitleaks, helm, helm-unittest, jq, kube-linter, kubeconform, kustomize, Node, OpenTofu,
-promtool, shellcheck, tflint, trivy and uv), with the checksum of each download. The test of the
+promtool, shellcheck, tflint, trivy, uv and yq), with the checksum of each download. The test of the
 Renovate presets runs the Renovate release of `tests/test-renovate-presets.sh` with the `npx` of
 that Node. `pyproject.toml` and
 `uv.lock` pin the Python tools (ansible-core, ansible-lint, pre-commit and yamllint). Install them
@@ -158,6 +163,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | --- | --- |
 | Private-data guard | `mise exec -- tests/test-private-data-scan.sh` and `mise exec -- scripts/private-data-scan.sh dir .` |
 | K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
+| K8s templates | `mise exec -- tests/test-service-repos.sh` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and `tofu init -backend=false` and `tofu validate` in each folder of `tf/examples/` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
