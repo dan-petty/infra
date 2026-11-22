@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# Tests of the Copier template of a new repository: copier.yml and templates/repository/
+# (README.md, "Repository template"). The test renders the template with each answer set into a
+# temporary folder, with `copier copy --defaults --vcs-ref HEAD` and no --trust, as
+# `devops repos onboard` renders a release tag. --vcs-ref HEAD renders the working tree, also the
+# changes that are not committed. Then it checks the rendered files:
+#   - the set of files: the release files only when the release flow is on, version.txt only for
+#     the release type simple, and no file with the suffix .jinja,
+#   - actionlint on the workflows, yamllint --strict on each YAML file, pre-commit validate-config,
+#   - check-jsonschema: github/repository.yaml with templates/github-repository.schema.json, and the
+#     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
+#   - the config validator of Renovate, in strict mode, on .github/renovate.json,
+#   - the answers in the files: the scope labels, the release type, the environment release, the
+#     tag of infra in the callers of the reusable workflows (infra_ref, else _commit) and the code
+#     owner,
+#   - that Copier refuses a scope that is not a lowercase name.
+# Run it from the repository root after `uv sync --frozen`: `mise exec -- tests/test-repository-template.sh`.
+# npx installs the Renovate release of RENOVATE_VERSION with the Node of mise.toml, and runs no
+# install script of a package. check-jsonschema downloads the release-please schemas from GitHub.
+set -euo pipefail
+
+# renovate: datasource=npm depName=renovate
+RENOVATE_VERSION=44.257.9
+# renovate: datasource=npm depName=release-please
+RELEASE_PLEASE_VERSION=17.11.2
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+failures=0
+cases=0
+export PATH="$root/.venv/bin:$PATH"
+export npm_config_ignore_scripts=true npm_config_update_notifier=false npm_config_audit=false \
+  npm_config_fund=false RENOVATE_BASE_DIR="$work/renovate"
+schemas="https://raw.githubusercontent.com/googleapis/release-please/v$RELEASE_PLEASE_VERSION/schemas"
+# The tag of infra that the callers of the reusable workflows pin. A render of a release tag gets
+# that tag; a render of HEAD gets the output of git describe, so the test gives a tag.
+ref=v1.2.3
+
+# check NAME COMMAND...: run COMMAND, and count a non-zero exit as a failure with its output.
+check() {
+  local name="$1"
+  shift
+  cases=$((cases + 1))
+  if "$@" >"$work/check.log" 2>&1; then
+    echo "ok   $name"
+  else
+    echo "FAIL $name"
+    sed 's/^/     /' "$work/check.log"
+    failures=$((failures + 1))
+  fi
+}
+
+# expect NAME WANT GOT: WANT and GOT are the same text.
+expect() {
+  cases=$((cases + 1))
+  if [ "$2" = "$3" ]; then
+    echo "ok   $1"
+  else
+    echo "FAIL $1"
+    echo "     want: $2"
+    echo "     got:  $3"
+    failures=$((failures + 1))
+  fi
+}
+
+# render NAME DATA...: render the template into $work/NAME with the answers DATA (key=value).
+render() {
+  local name="$1" args=()
+  shift
+  for data in "$@"; do
+    args+=(--data "$data")
+  done
+  check "$name: copier copy" copier copy --quiet --defaults --vcs-ref HEAD \
+    --data "infra_ref=$ref" "${args[@]}" "$root" "$work/$name"
+}
+
+# files DIR: the files of DIR, one on each line, in sort order.
+files() {
+  (cd "$1" && find . -type f -printf '%P\n' | LC_ALL=C sort)
+}
+
+# validate NAME: the validators of each rendered file of $work/NAME.
+validate() {
+  local dir="$work/$1" yaml=()
+  mapfile -t yaml < <(find "$dir" -type f \( -name '*.yaml' -o -name '*.yml' \) | LC_ALL=C sort)
+  check "$1: actionlint" actionlint "$dir"/.github/workflows/*.yml
+  check "$1: yamllint --strict" yamllint --strict -c "$root/.yamllint.yaml" "${yaml[@]}"
+  check "$1: pre-commit validate-config" pre-commit validate-config "$dir/.pre-commit-config.yaml"
+  check "$1: github/repository.yaml matches its schema" check-jsonschema \
+    --schemafile "$root/templates/github-repository.schema.json" "$dir/github/repository.yaml"
+  if [ -f "$dir/release-please-config.json" ]; then
+    check "$1: release-please-config.json matches its schema" check-jsonschema \
+      --schemafile "$schemas/config.json" "$dir/release-please-config.json"
+    check "$1: .release-please-manifest.json matches its schema" check-jsonschema \
+      --schemafile "$schemas/manifest.json" "$dir/.release-please-manifest.json"
+  fi
+}
+
+# labels NAME: the names of the labels of $work/NAME, on one line.
+labels() {
+  yq -r '[.[].name] | join(" ")' "$work/$1/.github/labels.yml"
+}
+
+# uses NAME WORKFLOW: the `uses` of each job of the workflow WORKFLOW of $work/NAME, on one line.
+uses() {
+  yq -r '[.jobs[].uses] | join(" ")' "$work/$1/.github/workflows/$2"
+}
+
+check "the schema of github/repository.yaml is a valid JSON Schema" check-jsonschema \
+  --check-metaschema "$root/templates/github-repository.schema.json"
+
+common='.copier-answers.yml
+.github/CODEOWNERS
+.github/labels.yml
+.github/renovate.json
+.github/workflows/pr-title.yml
+.pre-commit-config.yaml
+github/repository.yaml'
+release='.github/workflows/release.yml
+.release-please-manifest.json
+release-please-config.json'
+
+# The default answers: the release flow with the release type simple, and no scope of its own.
+render defaults
+validate defaults
+expect "defaults: files" "$(printf '%s\n%s\nversion.txt' "$common" "$release" | LC_ALL=C sort)" \
+  "$(files "$work/defaults")"
+expect "defaults: labels" "scope/ci scope/deps scope/docs autorelease: pending autorelease: tagged" \
+  "$(labels defaults)"
+expect "defaults: release type" "simple" "$(jq -r '."release-type"' "$work/defaults/release-please-config.json")"
+expect "defaults: the environment release" "release" \
+  "$(yq -r '[.environments[].name] | join(" ")' "$work/defaults/github/repository.yaml")"
+expect "defaults: the pin of the reusable PR title workflow" \
+  "dan-petty/infra/.github/workflows/pr-title.yml@$ref" "$(uses defaults pr-title.yml)"
+expect "defaults: the pin of the reusable release workflow" \
+  "dan-petty/infra/.github/workflows/release.yml@$ref" "$(uses defaults release.yml)"
+expect "defaults: code owner" "* @dan-petty" "$(grep -v '^#' "$work/defaults/.github/CODEOWNERS")"
+check "defaults: renovate-config-validator --strict" npx --yes --package "renovate@$RENOVATE_VERSION" \
+  -- renovate-config-validator --strict "$work/defaults/.github/renovate.json"
+expect "defaults: infra_ref is not in .copier-answers.yml" "null" \
+  "$(yq -r '.infra_ref' "$work/defaults/.copier-answers.yml")"
+
+# With no answer infra_ref, the callers pin _commit, the version of infra that Copier renders.
+check "commit: copier copy" copier copy --quiet --defaults --vcs-ref HEAD "$root" "$work/commit"
+expect "commit: the pin of the reusable PR title workflow" \
+  "dan-petty/infra/.github/workflows/pr-title.yml@$(yq -r '._commit' "$work/commit/.copier-answers.yml")" \
+  "$(uses commit pr-title.yml)"
+
+# Each release type, with two scopes of the repository. A scope of the template, here docs, comes
+# once.
+for type in simple python node; do
+  render "$type" "release_type=$type" "scopes=api, worker,docs"
+  validate "$type"
+  want="$(printf '%s\n%s' "$common" "$release")"
+  if [ "$type" = simple ]; then
+    want="$(printf '%s\nversion.txt' "$want")"
+  fi
+  expect "$type: files" "$(printf '%s\n' "$want" | LC_ALL=C sort)" "$(files "$work/$type")"
+  expect "$type: labels" \
+    "scope/ci scope/deps scope/docs scope/api scope/worker autorelease: pending autorelease: tagged" \
+    "$(labels "$type")"
+  expect "$type: release type" "$type" \
+    "$(jq -r '."release-type"' "$work/$type/release-please-config.json")"
+done
+
+# No release flow (decision D2 of devops-cli#6773: a private repository on the Free plan): no release
+# workflow, no release-please files and no environment release.
+render no-release release_flow=false
+validate no-release
+expect "no-release: files" "$common" "$(files "$work/no-release")"
+expect "no-release: labels" "scope/ci scope/deps scope/docs" "$(labels no-release)"
+expect "no-release: no environment" "0" \
+  "$(yq -r '.environments // [] | length' "$work/no-release/github/repository.yaml")"
+
+# Copier refuses a scope that is not a lowercase name, and the scope main of the release pull request.
+for scopes in "Bad Scope" "api,main"; do
+  cases=$((cases + 1))
+  if copier copy --quiet --defaults --vcs-ref HEAD --data "infra_ref=$ref" --data "scopes=$scopes" \
+    "$root" "$work/refused" >"$work/refused.log" 2>&1; then
+    echo "FAIL copier refuses scopes=$scopes"
+    failures=$((failures + 1))
+  else
+    echo "ok   copier refuses scopes=$scopes"
+  fi
+  rm -rf "$work/refused"
+done
+
+echo "$((cases - failures)) of $cases cases passed"
+[ "$failures" -eq 0 ]

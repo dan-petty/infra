@@ -9,8 +9,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "The Renovate release of tests/test-renovate-presets.sh, which runs the config validator and the extract with npx.",
-      "managerFilePatterns": ["/^tests/test-renovate-presets\\.sh$/"],
+      "description": "The Renovate release of tests/test-renovate-presets.sh and tests/test-repository-template.sh, which run the config validator and the extract with npx, and the release-please release whose schemas tests/test-repository-template.sh reads.",
+      "managerFilePatterns": ["/^tests/test-(renovate-presets|repository-template)\\.sh$/"],
       "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z_]+_VERSION=(?<currentValue>\\S+)"]
     }
   ],
