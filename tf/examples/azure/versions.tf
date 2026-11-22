@@ -4,7 +4,9 @@ terraform {
 
   required_providers {
     azapi = {
-      source  = "Azure/azapi"
+      # The source is in lower case, as in .terraform.lock.hcl. Renovate compares the two names
+      # with case, and with "Azure/azapi" it does not update the lock file.
+      source  = "azure/azapi"
       version = "2.14.0"
     }
   }

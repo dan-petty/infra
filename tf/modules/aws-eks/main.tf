@@ -56,6 +56,17 @@ module "eks" {
   # default access of aws_eks_cluster. Thus the kubeconfig command of the outputs gives access.
   enable_cluster_creator_admin_permissions = true
 
+  # The EKS module does not bootstrap the self-managed add-ons (bootstrap_self_managed_addons =
+  # false), so it installs the add-ons that the stub got from EKS through the add-on API. vpc-cni
+  # comes before the node group, so that the nodes become Ready.
+  addons = {
+    coredns    = {}
+    kube-proxy = {}
+    vpc-cni = {
+      before_compute = true
+    }
+  }
+
   eks_managed_node_groups = {
     default = {
       instance_types = var.node_instance_types

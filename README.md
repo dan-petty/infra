@@ -166,7 +166,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
 | K8s templates | `mise exec -- tests/test-service-repos.sh` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
-| OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file), then `tofu init -backend=false` and `tofu validate` |
+| OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file; a bare `trivy config tf/` gets no variable values and reports GCP-0061), then `tofu init -backend=false` and `tofu validate` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
 | YAML | `.venv/bin/yamllint --strict .` |
 | actionlint | `mise exec -- actionlint` |

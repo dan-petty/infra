@@ -62,6 +62,9 @@ environment, so the name, the region and the network have no default.
   access only from the VPC or from a network that connects to it.
 - The identity that applies the module becomes a cluster administrator
   (`enable_cluster_creator_admin_permissions`), as the stub did with the default access of EKS.
+- The cluster gets the EKS add-ons `vpc-cni`, `kube-proxy` and `coredns`, at the newest version for
+  its Kubernetes version. `vpc-cni` comes before the node group, so the nodes become Ready. The
+  stub got these add-ons from EKS itself, but the EKS module 21.x does not bootstrap them.
 - The EKS module adds a KMS key for the encryption of the Secrets, and a CloudWatch log group for
   the audit, API and authenticator logs of the control plane.
 - The node security group of the EKS module lets the nodes connect to each address, through the

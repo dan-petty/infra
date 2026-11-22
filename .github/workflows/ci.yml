@@ -271,7 +271,12 @@ jobs:
 
       # trivy config scans each example with the registry modules that it calls, and with the
       # values of its <folder>.tfvars.example, so it can evaluate the expressions that use a
-      # variable. tf/.trivyignore.yaml holds the written judgment of each finding that stays.
+      # variable. A bare `trivy config tf/` gets no value, so it reports GCP-0061 on the GCP
+      # example. One scan of tf/ with the three files gives each example the values of all three,
+      # so a variable of two files gets one value in both. tf/.trivyignore.yaml holds the written
+      # judgment of each finding
+      # that stays. --skip-dirs keeps the module copies of a local tofu init out of the scan;
+      # trivy downloads and scans the registry modules itself.
       - name: Scan each example with trivy config
         timeout-minutes: 5
         run: |
@@ -283,7 +288,7 @@ jobs:
               vars=(--tf-vars "$tfvars")
             fi
             mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL \
-              --ignorefile tf/.trivyignore.yaml "${vars[@]}" "$example"
+              --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' "${vars[@]}" "$example"
           done
 
       # tofu init downloads the registry modules and the providers of the lock file of each example.
