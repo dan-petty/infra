@@ -96,6 +96,8 @@ jobs:
               - *tools
               - .github/workflows/**
               - .github/actionlint.yaml
+              - scripts/pr-title-scopes.sh
+              - tests/test-pr-title-scopes.sh
             shell:
               - *tools
               - "**/*.sh"
@@ -392,6 +394,13 @@ jobs:
         timeout-minutes: 2
         run: yamllint --strict .
 
+      # zizmor checks the workflows: each action pinned to a commit SHA, no job with more
+      # permissions than it needs and no `secrets: inherit`. The audits run offline, so the result
+      # does not change with the GitHub API. .github/zizmor.yml holds the settings.
+      - name: Run zizmor
+        timeout-minutes: 2
+        run: zizmor --offline .github/workflows/
+
   actions:
     name: actionlint
     needs: changes
@@ -415,14 +424,20 @@ jobs:
           install: false
           cache: false
 
-      - name: Install actionlint and shellcheck
+      - name: Install actionlint, shellcheck and yq
         timeout-minutes: 3
-        run: mise install --locked actionlint shellcheck
+        run: mise install --locked actionlint shellcheck yq
 
       # actionlint also runs shellcheck on the script of each run step.
       - name: Run actionlint
         timeout-minutes: 2
         run: mise exec -- actionlint
+
+      # The script gives the reusable workflow pr-title.yml the scopes of the labels file of the
+      # caller (tests/test-pr-title-scopes.sh).
+      - name: Test scripts/pr-title-scopes.sh
+        timeout-minutes: 2
+        run: mise exec -- tests/test-pr-title-scopes.sh
 
   shell:
     name: shellcheck
