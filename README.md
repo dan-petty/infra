@@ -118,7 +118,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | YAML | `.venv/bin/yamllint --strict .` |
 | actionlint | `mise exec -- actionlint` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |
-| Renovate presets | `mise exec -- tests/test-renovate-presets.sh` |
+| Renovate presets | `mise exec -- tests/test-renovate-presets.sh`, with a GitHub token in `RENOVATE_GITHUB_COM_TOKEN` for the lookup ([renovate/README.md](renovate/README.md#test)) |
 
 ## Private-data guard
 

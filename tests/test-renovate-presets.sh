@@ -11,6 +11,12 @@
 #   (`--platform=local --dry-run=extract` reads the files of the working tree, looks up no release
 #   and opens no pull request). The test checks that Renovate reads each pin of infra, at a release
 #   tag, with the datasource github-tags or git-tags, and the image of the Cluster.
+# - Renovate looks up the releases of each pin of infra (`--dry-run=lookup`). The extract does not
+#   apply the packageRules, so only the lookup proves a rule that changes the name that a lookup
+#   reads. The test checks that each lookup gets the repository https://github.com/dan-petty/infra
+#   with no warning. The datasource github-tags reads the GitHub API, which needs a token: set
+#   RENOVATE_GITHUB_COM_TOKEN to a token that can read public repositories. Without a token, the
+#   test skips the lookup; in CI (CI=true) the lookup is necessary.
 # Run it with `mise exec -- tests/test-renovate-presets.sh`. npx installs the Renovate release of
 # RENOVATE_VERSION with the Node of mise.toml, and runs no install script of a package.
 set -euo pipefail
@@ -75,12 +81,12 @@ grep '^{' "$work/extract.log" | jq -c '
   | {manager: $manager, file: $file, depName, packageName, datasource, currentValue, skipReason}' \
   >"$work/deps.jsonl"
 
-# check NAME FILTER TEST: exactly one dependency of the extract matches the jq filter FILTER, and
-# that dependency passes the jq test TEST.
+# check NAME FILTER TEST [FILE]: exactly one dependency of FILE (default: the deps of the extract)
+# matches the jq filter FILTER, and that dependency passes the jq test TEST.
 check() {
-  local name="$1" filter="$2" test="$3" deps
+  local name="$1" filter="$2" test="$3" file="${4:-$work/deps.jsonl}" deps
   cases=$((cases + 1))
-  deps="$(jq -c "select($filter)" "$work/deps.jsonl")"
+  deps="$(jq -c "select($filter)" "$file")"
   if [ "$(printf '%s' "$deps" | grep -c .)" -ne 1 ]; then
     echo "FAIL $name: want one dependency, got: ${deps:-none}"
     failures=$((failures + 1))
@@ -114,6 +120,44 @@ expect github-actions
 check "custom.regex: the image of the CloudNativePG Cluster" '.manager == "regex"' \
   '.file == "k8s/cluster.yaml" and .datasource == "docker"
   and .depName == "ghcr.io/cloudnative-pg/postgresql" and .currentValue == "17.5"'
+
+# The lookup. The JSON log at the level debug has one record with the message "packageFiles with
+# updates": the result of the lookup of each dependency. A lookup that gets the repository of infra sets sourceUrl; a
+# failed lookup sets a warning and no sourceUrl, also when infra has no release tag yet. The test
+# turns off the OSV vulnerability alerts of base.json for the lookup: they download the OSV
+# database, and the rules of the pins do not use it.
+if [ -z "${RENOVATE_GITHUB_COM_TOKEN:-}" ]; then
+  if [ "${CI:-}" = "true" ]; then
+    cases=$((cases + 1))
+    echo "FAIL renovate --platform=local --dry-run=lookup: CI sets no RENOVATE_GITHUB_COM_TOKEN"
+    failures=$((failures + 1))
+  else
+    echo "skip renovate --platform=local --dry-run=lookup: set RENOVATE_GITHUB_COM_TOKEN to run it"
+  fi
+else
+  jq '.osvVulnerabilityAlerts = false' "$work/repo/renovate.json" >"$work/lookup.json"
+  mv "$work/lookup.json" "$work/repo/renovate.json"
+  git -C "$work/repo" add --all
+  cases=$((cases + 1))
+  if (cd "$work/repo" && LOG_FORMAT=json LOG_LEVEL=debug renovate renovate --platform=local \
+    --dry-run=lookup) >"$work/lookup.log" 2>&1; then
+    echo "ok   renovate --platform=local --dry-run=lookup"
+  else
+    echo "FAIL renovate --platform=local --dry-run=lookup"
+    tail -n 20 "$work/lookup.log" | sed 's/^/     /'
+    failures=$((failures + 1))
+  fi
+  grep '^{' "$work/lookup.log" | jq -c '
+    select(.msg == "packageFiles with updates") | .config | to_entries[] | .key as $manager
+    | .value[] | .packageFile as $file | .deps[]
+    | {manager: $manager, file: $file, depName, packageName, datasource, sourceUrl, warnings}' \
+    >"$work/lookup.jsonl"
+  for manager in kustomize terraform ansible-galaxy argocd github-actions; do
+    check "$manager: the lookup of the pin of infra" ".manager == \"$manager\" and ($infra)" \
+      '.sourceUrl == "https://github.com/dan-petty/infra" and (.warnings // []) == []' \
+      "$work/lookup.jsonl"
+  done
+fi
 
 echo "$((cases - failures)) of $cases cases passed"
 [ "$failures" -eq 0 ]

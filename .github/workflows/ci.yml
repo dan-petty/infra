@@ -400,8 +400,10 @@ jobs:
         timeout-minutes: 3
         run: mise install --locked node jq
 
-      # npx installs the Renovate release of the test. The extract looks up no release, so the step
-      # needs no token.
-      - name: Validate the presets and extract the pins of the fixture
+      # npx installs the Renovate release of the test. The lookup of the pins reads the GitHub API
+      # with the token of the job, which can only read (permissions: contents: read).
+      - name: Validate the presets and extract and look up the pins of the fixture
         timeout-minutes: 6
+        env:
+          RENOVATE_GITHUB_COM_TOKEN: ${{ github.token }}
         run: mise exec -- tests/test-renovate-presets.sh
