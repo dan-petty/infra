@@ -1,0 +1,7 @@
+# A services entry with only the required keys (docs/service-repos.md).
+name: minimal
+repoURL: https://git.example.com/minimal.git
+path: k8s
+targetRevision: v1.0.0
+namespaces:
+  - name: minimal

@@ -1,0 +1,19 @@
+# The ImageUpdater object of the service Applications of the ApplicationSet service-workloads. With
+# useAnnotations: true, Argo CD Image Updater v1.4.0 uses only namePattern and labelSelectors of the
+# object, and reads the update settings from the argocd-image-updater.argoproj.io/* annotations of
+# each Application (docs/configuration/applications.md of Image Updater). Thus the object has no
+# images, commonUpdateSettings or writeBackConfig. The label selector selects only the Applications
+# with the label of service-workloads. Two ImageUpdater objects that select one Application write
+# over each other, so no other object selects these Applications.
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: service-repos
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: "*"
+      labelSelectors:
+        matchLabels:
+          app.kubernetes.io/part-of: service-repos
+      useAnnotations: true

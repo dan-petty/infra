@@ -1,0 +1,10 @@
+# The base service-repos: the two ApplicationSets that deploy each service repository from one
+# services entry, the AppProject services-admin of the tenants, and the ImageUpdater service-repos
+# (docs/service-repos.md). The consumer patches the placeholders (docs/service-repos.md, "Consumer
+# patches").
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - applicationsets.yaml
+  - appproject.yaml
+  - imageupdater.yaml

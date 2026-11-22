@@ -1,0 +1,19 @@
+# The test overlay of the base service-repos. The base holds the placeholder
+# https://git.example.com/environment.git of the environment repository, which the test keeps. The
+# patch adds a deny destination for one more platform namespace, as a consumer does for each
+# platform namespace of its cluster. services/ and tenant-values.yaml are the test copy of the
+# environment repository, which tests/test-service-repos.sh reads.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../bases/service-repos
+patches:
+  - target:
+      kind: AppProject
+      name: services-admin
+    patch: |-
+      - op: add
+        path: /spec/destinations/-
+        value:
+          server: https://kubernetes.default.svc
+          namespace: '!monitoring'

@@ -73,6 +73,8 @@ jobs:
               - .kube-linter.yaml
               - scripts/k8s-validate.sh
               - tests/test-kube-linter-config.sh
+              - tests/test-service-repos.sh
+              - version.txt
               - k8s/**
               - charts/**
               - helm/**
@@ -156,6 +158,7 @@ jobs:
         k8s/tests/valkey-exporter
         k8s/tests/valkey-acl
         k8s/tests/valkey-full
+        k8s/tests/service-repos
       helm-charts: |
         charts/example
         charts/service-tenant
@@ -192,6 +195,39 @@ jobs:
       - name: Test the custom checks of .kube-linter.yaml
         timeout-minutes: 3
         run: mise exec -- tests/test-kube-linter-config.sh
+
+  k8s-templates:
+    name: K8s templates
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.12"
+          install: false
+          cache: false
+
+      - name: Install kustomize, yq, helm and kubeconform
+        timeout-minutes: 3
+        run: mise install --locked kustomize yq helm kubeconform
+
+      # The test renders the test overlay and the Application templates of the ApplicationSets for
+      # each test services entry, and checks them (tests/test-service-repos.sh).
+      - name: Test the base service-repos
+        timeout-minutes: 3
+        run: mise exec -- tests/test-service-repos.sh
 
   tofu:
     name: OpenTofu

@@ -1,0 +1,42 @@
+# The AppProject of the tenant Applications of the ApplicationSet service-tenants. A tenant
+# Application renders the chart charts/service-tenant of infra with the value files of the
+# environment repository. The allow-lists hold only the kinds that the chart renders. The
+# destinations admit argocd, which holds the AppProject of each service, and each namespace but the
+# reserved ones. A deny destination refuses a namespace although another destination admits it. The
+# consumer adds the URL of its environment repository and a deny destination for each platform
+# namespace of its cluster (docs/service-repos.md, "Consumer patches").
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: services-admin
+  namespace: argocd
+spec:
+  description: The tenants of the service repositories (dan-petty/infra docs/service-repos.md).
+  sourceRepos:
+    - https://github.com/dan-petty/infra.git
+    - https://git.example.com/environment.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+    - server: https://kubernetes.default.svc
+      namespace: '!kube-system'
+    - server: https://kubernetes.default.svc
+      namespace: '!kube-public'
+    - server: https://kubernetes.default.svc
+      namespace: '!kube-node-lease'
+    - server: https://kubernetes.default.svc
+      namespace: '!default'
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: AppProject
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: ''
+      kind: LimitRange
+    - group: traefik.io
+      kind: Middleware

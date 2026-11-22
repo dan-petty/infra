@@ -1,0 +1,13 @@
+# The platform values of the test copy of the environment repository: the file
+# k8s/argocd/services/tenant-values.yaml of a consumer. The namespace monitoring is the platform
+# namespace of the deny patch of kustomization.yaml.
+reservedNamespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - default
+  - argocd
+  - monitoring
+reservedProjects:
+  - default
+  - services-admin

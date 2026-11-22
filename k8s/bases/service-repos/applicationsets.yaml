@@ -1,0 +1,144 @@
+# The two ApplicationSets of the base (docs/service-repos.md). Each reads the services entries of
+# the environment repository with a Git files generator: one file in k8s/services/ for each
+# service. Only a person merges in the environment repository, so it is the source of truth of the
+# templated project of service-workloads, as the Argo CD docs require.
+#
+# Each set has these settings:
+# - goTemplateOptions missingkey=error: a template that reads a key that an entry does not have
+#   stops the render. Thus only the templatePatch reads the optional key images, under hasKey.
+# - pathParamPrefix file: with goTemplate, the Git files generator of Argo CD v3.6.2 writes the path
+#   of the entry file into the param path, over the key path of the entry
+#   (applicationset/generators/repo_path_utils.go). With the prefix, the path of the file is in
+#   .file.path and the key path of the entry stays.
+# - preserveResourcesOnDeletion: when an entry goes, Argo CD deletes its Applications and keeps
+#   their resources. Argo CD adds no resources finalizer to an Application of the set, and the
+#   templates have none: a finalizer in the template deletes the resources with the Application.
+#
+# The consumer sets the URL and the revision of its environment repository in each generator and in
+# the values source of service-tenants (docs/service-repos.md, "Consumer patches").
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: service-tenants
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://git.example.com/environment.git
+        revision: HEAD
+        files:
+          - path: k8s/services/*.yaml
+        pathParamPrefix: file
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  # The tenant of each service: the chart charts/service-tenant of infra at the release tag of this
+  # file, which the release pull request writes on the line of targetRevision. The value files are
+  # the platform values of the environment repository, then the entry file. FailOnSharedResource
+  # stops the sync when another Application already has an object, so two entries cannot take one
+  # namespace.
+  template:
+    metadata:
+      name: tenant-{{.name}}
+    spec:
+      project: services-admin
+      sources:
+        - repoURL: https://github.com/dan-petty/infra.git
+          path: charts/service-tenant
+          targetRevision: v0.0.0 # x-release-please-version
+          helm:
+            valueFiles:
+              - $values/k8s/argocd/services/tenant-values.yaml
+              - $values/{{ .file.path.path }}/{{ .file.path.filename }}
+        - repoURL: https://git.example.com/environment.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - FailOnSharedResource=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: service-workloads
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://git.example.com/environment.git
+        revision: HEAD
+        files:
+          - path: k8s/services/*.yaml
+        pathParamPrefix: file
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  # Image Updater writes the digest of each image into spec.source.kustomize.images of the
+  # Application (write-back method argocd). The set does not write that field back.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/source/kustomize/images
+  # The service: the manifests of the entry in its own AppProject, which the tenant chart makes. The
+  # destination is the first namespace of the entry. The label selects the Application for the
+  # ImageUpdater service-repos. The AppProject of the tenant chart has the on-deployed subscription
+  # of Argo CD Notifications, so the Application has no subscription annotation.
+  template:
+    metadata:
+      name: '{{.name}}'
+      labels:
+        app.kubernetes.io/part-of: service-repos
+    spec:
+      project: '{{.name}}'
+      source:
+        repoURL: '{{.repoURL}}'
+        path: '{{.path}}'
+        targetRevision: '{{.targetRevision}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ (index .namespaces 0).name }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  # The annotations of Image Updater, for an entry with one or more images. With useAnnotations,
+  # Image Updater reads the update settings only from these annotations: the required image-list
+  # (alias=image, separated by commas), the update strategy digest of each alias, and the write-back
+  # method argocd. The strategy digest follows the tag that the image names.
+  templatePatch: |
+    {{- if hasKey . "images" }}
+    {{- if .images }}
+    {{- $images := list }}
+    {{- range .images }}
+    {{- $images = append $images (printf "%s=%s" .alias .image) }}
+    {{- end }}
+    metadata:
+      annotations:
+        argocd-image-updater.argoproj.io/image-list: {{ join "," $images | toJson }}
+        argocd-image-updater.argoproj.io/write-back-method: argocd
+        {{- range .images }}
+        argocd-image-updater.argoproj.io/{{ .alias }}.update-strategy: digest
+        {{- end }}
+    {{- end }}
+    {{- end }}
