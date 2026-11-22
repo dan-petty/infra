@@ -6,15 +6,15 @@ misconfigurations:
   # 0.0.0.0/0. The nodes pull the images of the stack from public registries and call the AWS APIs
   # through the NAT gateway, so they need egress to the internet. The nodes have no public address,
   # and the cluster API has a private endpoint only. AWS-0104 checks the destination CIDR, so a
-  # port limit does not remove the finding. The finding is CRITICAL: the owner decides the judgment
-  # and its date, and the statement names that decision.
+  # port limit does not remove the finding. The finding is CRITICAL, so the owner decided the
+  # judgment and its date: accepted on 2026-11-22 for 90 days.
   - id: AWS-0104
     paths:
       - terraform-aws-modules/eks/aws/node_groups.tf
     statement: >-
       The EKS nodes need internet egress through the NAT gateway for public images and AWS APIs;
-      the owner decides this CRITICAL judgment and its date (dan-petty/infra#30)
-    expired_at: 2026-11-25
+      the owner accepted this CRITICAL judgment on 2026-11-22 for 90 days (dan-petty/infra#30)
+    expired_at: 2027-02-20
   # A false finding: the GKE module sets workload_metadata_config.mode to GKE_METADATA in a dynamic
   # block of node_config, and trivy 0.76.2 does not expand a dynamic block in node_config. The same
   # value in a static block passes the check.
