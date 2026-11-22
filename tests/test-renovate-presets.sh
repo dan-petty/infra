@@ -122,10 +122,10 @@ check "custom.regex: the image of the CloudNativePG Cluster" '.manager == "regex
   and .depName == "ghcr.io/cloudnative-pg/postgresql" and .currentValue == "17.5"'
 
 # The lookup. The JSON log at the level debug has one record with the message "packageFiles with
-# updates": the result of the lookup of each dependency. A lookup that gets the repository of infra sets sourceUrl; a
-# failed lookup sets a warning and no sourceUrl, also when infra has no release tag yet. The test
-# turns off the OSV vulnerability alerts of base.json for the lookup: they download the OSV
-# database, and the rules of the pins do not use it.
+# updates": the result of the lookup of each dependency. A lookup that gets the repository of infra
+# sets sourceUrl; a failed lookup sets a warning and no sourceUrl, also when infra has no release
+# tag yet. The test turns off the OSV vulnerability alerts of base.json for the lookup: they
+# download the OSV database, and the rules of the pins do not use it.
 if [ -z "${RENOVATE_GITHUB_COM_TOKEN:-}" ]; then
   if [ "${CI:-}" = "true" ]; then
     cases=$((cases + 1))
