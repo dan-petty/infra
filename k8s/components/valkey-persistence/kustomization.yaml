@@ -1,0 +1,9 @@
+# The component valkey-persistence of the base valkey: the claim valkey-data replaces the emptyDir
+# volume of /data, so the files of Valkey stay across a restart. valkey.conf of the consumer
+# selects the files that Valkey writes, such as appendonly yes (k8s/bases/valkey/README.md).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - persistentvolumeclaim.yaml
+patches:
+  - path: deployment.yaml

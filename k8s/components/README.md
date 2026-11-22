@@ -13,6 +13,9 @@ The README of each component names its consumers.
 | Component | Content | Consumers |
 | --- | --- | --- |
 | `example` | A ConfigMap of one Prometheus rule file: the fixture of the checks. | None. |
+| `valkey-persistence` | The claim `valkey-data` for `/data` of the base `valkey` ([README](../bases/valkey/README.md)). | None yet. Planned: a service queue store. |
+| `valkey-exporter` | The `redis_exporter` sidecar on port 9121 of the base `valkey`, and its NetworkPolicy. | None yet. Planned: dan-petty/homelab#88 and the stores of devops-cli. |
+| `valkey-acl` | The ACL users of the base `valkey` from the Secret `valkey-acl`. | None yet. Planned: the stores of devops-cli. |
 
 A consumer pins a component at a release tag of infra:
 

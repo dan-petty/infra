@@ -1,0 +1,21 @@
+# The component valkey-acl of the base valkey: Valkey reads its users from the key users.acl of the
+# Secret valkey-acl, which the consumer creates. Valkey ignores requirepass when it reads an
+# aclfile, so the file must define the user default (k8s/bases/valkey/README.md).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - path: deployment.yaml
+  # valkey-server gets the option --aclfile. The container valkey is the first container of the
+  # base.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: valkey
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --aclfile
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: /etc/valkey/users.acl
