@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/dan-petty/infra/compare/v0.2.0...v0.3.0) (2026-11-22)
+
+
+### Features
+
+* **ci:** add the Copier template of a new repository ([#40](https://github.com/dan-petty/infra/issues/40)) ([3eda7b1](https://github.com/dan-petty/infra/commit/3eda7b17b99a60d6bce24144575577a99bdc9363))
+
 ## [0.2.0](https://github.com/dan-petty/infra/compare/v0.1.0...v0.2.0) (2026-11-22)
 
 
