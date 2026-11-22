@@ -30,16 +30,17 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `.github/workflows/` | CI (`ci.yml`), the releases (`release.yml`) and the reusable workflow `k8s-validate.yml`. |
 
 The README of each folder tells its content and the consumers of each template. Each folder that
-a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` gets its
-first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
-templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
-`charts/service-tenant` (dan-petty/infra#10), the Ansible roles `nvidia`, `gvisor` and
-`cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey` with its components
-`valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13), the base
-`k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)), and
+a CI job checks has an `example` fixture, so CI proves that each check runs; the test chart of
+each values template is the fixture of `helm/`. The fixture of `renovate/` is `tests/renovate/`.
+The real templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
+`charts/service-tenant` (dan-petty/infra#10, with its secret store from dan-petty/infra#12), the
+Ansible roles `nvidia`, `gvisor` and `cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey`
+with its components `valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13),
+the base `k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)),
+the values template `helm/external-secrets` of External Secrets Operator (dan-petty/infra#12), and
 the OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9).
-More templates come with later items, such as #8 (the Ansible role common and plays) and #12 and
-#14 to #19 (Kubernetes bases and components, and Helm values templates).
+More templates come with later items, such as #8 (the Ansible role common and plays) and #14 to
+#19 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release
 
@@ -104,9 +105,15 @@ names it.
 
 `.github/workflows/k8s-validate.yml` (`on: workflow_call`) checks Kubernetes manifests, Helm charts
 and Prometheus rules. It runs `kustomize build` and `helm template` into `kubeconform -strict` (with
-the CRD schemas of the [datreeio CRDs-catalog](https://github.com/datreeio/CRDs-catalog)),
-kube-linter and `trivy config` (HIGH and CRITICAL findings), and `helm lint --strict`,
-`helm unittest` and `promtool check rules`. It installs the tools of the `mise.lock` of its own
+the CRD schemas of the [datreeio CRDs-catalog](https://github.com/datreeio/CRDs-catalog), and the
+non-standalone schema of `CustomResourceDefinition` of
+[yannh/kubernetes-json-schema](https://github.com/yannh/kubernetes-json-schema)), kube-linter and
+`trivy config` (HIGH and CRITICAL findings), and `helm lint --strict`, `helm unittest` and
+`promtool check rules`. The render writes each object to its own file
+`<n>-kustomize-<root>/` or `<n>-helm-<release>/`, then `<namespace>/` when the object has one, then
+`<kind>-<name>.yaml`. Thus each finding names one object, and an entry of a trivy ignore file can
+name the file of one object. A chart folder `test-chart` is the test chart of a values template
+([helm/README.md](helm/README.md)). The workflow installs the tools of the `mise.lock` of its own
 infra commit, so a caller gets the tool versions of its tag.
 
 ```yaml
@@ -130,6 +137,7 @@ jobs:
 | `helm-charts` | The Helm chart folders to lint, render and test, one on each line. Each `ci/*-values.yaml` file of a chart gives one render. |
 | `kube-linter-config` | The kube-linter config file of the caller. Empty selects the shared `.kube-linter.yaml` of infra. |
 | `promtool-rules` | The Prometheus rule files to check, one on each line. |
+| `trivy-ignorefile` | The trivy ignore file of the caller, in the form of `tf/.trivyignore.yaml`, which `trivy config` gets with `--ignorefile`. Empty gives no ignore file. |
 
 Each path is relative to the root of the caller repository. The shared `.kube-linter.yaml` holds
 the default checks of kube-linter, five more checks and the custom check `pvc-prune-protection`: a
@@ -163,8 +171,8 @@ runs every job. To run a job locally, run its command from the repository root:
 | Job | Command |
 | --- | --- |
 | Private-data guard | `mise exec -- tests/test-private-data-scan.sh` and `mise exec -- scripts/private-data-scan.sh dir .` |
-| K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
-| K8s templates | `mise exec -- tests/test-service-repos.sh` |
+| K8s | `KUSTOMIZE_ROOTS="$(ls -d k8s/tests/*/)" HELM_CHARTS=$'charts/example\ncharts/service-tenant\nhelm/external-secrets/test-chart' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml TRIVY_IGNORE_FILE=helm/.trivyignore.yaml mise exec -- scripts/k8s-validate.sh all` |
+| K8s templates | `mise exec -- tests/test-service-repos.sh` and `mise exec -- tests/test-k8s-validate.sh` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file; a bare `trivy config tf/` gets no variable values and reports GCP-0061), then `tofu init -backend=false` and `tofu validate` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |

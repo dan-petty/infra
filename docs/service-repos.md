@@ -14,7 +14,7 @@ The base uses the chart [`charts/service-tenant`](../charts/service-tenant/READM
 | --- | --- |
 | `ApplicationSet` `service-tenants` | One Application `tenant-<name>` for each entry, in the AppProject `services-admin`. It renders the chart `charts/service-tenant` of infra at the release tag of the base, with two value files of the environment repository: the platform values `k8s/argocd/services/tenant-values.yaml`, then the entry file. The sync option `FailOnSharedResource=true` stops the sync when another Application has one of the objects, so two entries cannot take one namespace. |
 | `ApplicationSet` `service-workloads` | One Application `<name>` for each entry, in the AppProject `<name>` that the chart makes. It deploys the folder `path` of `repoURL` at `targetRevision` into the first namespace of the entry, with automated sync (prune and selfHeal) and retry. It has the label `app.kubernetes.io/part-of: service-repos`, and the annotations of Image Updater when the entry has images. |
-| `AppProject` `services-admin` | The project of the tenant Applications. `sourceRepos`: infra and the environment repository. `clusterResourceWhitelist`: only `Namespace`. `namespaceResourceWhitelist`: the kinds that the chart renders: `AppProject`, `NetworkPolicy`, `LimitRange` and the Traefik `Middleware`. `destinations`: `argocd`, which holds the AppProject of each service, and `*` with a deny destination `!<namespace>` for each reserved namespace. |
+| `AppProject` `services-admin` | The project of the tenant Applications. `sourceRepos`: infra and the environment repository. `clusterResourceWhitelist`: only `Namespace`. `namespaceResourceWhitelist`: the kinds that the chart renders: `AppProject`, `NetworkPolicy`, `LimitRange` and the Traefik `Middleware`, and the `ServiceAccount`, `Role`, `RoleBinding` and `SecretStore` of the secret store ("Secrets"). `destinations`: `argocd`, which holds the AppProject of each service, and `*` with a deny destination `!<namespace>` for each reserved namespace. |
 | `ImageUpdater` `service-repos` in `argocd` | `namePattern: "*"`, a label selector on `app.kubernetes.io/part-of: service-repos`, and `useAnnotations: true`. It has no `images`, `commonUpdateSettings` or `writeBackConfig`. |
 
 A new kind of the chart needs a new row in the allow-list of `services-admin`.
@@ -65,6 +65,7 @@ stops the sync of `tenant-<name>`.
 | `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` and `backup` (charts/service-tenant/README.md, "Values"). The first namespace is the destination of the service Application. |
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. `image` names the tag that Image Updater follows, such as `registry.example.com/example/web:main`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. The chart adds them to the AppProject of the service. |
+| `secrets` | No | `store: true` gives the service its secret store ("Secrets"). Default `store: false`. |
 
 ```yaml
 name: example
@@ -82,6 +83,8 @@ images:
 extraKinds:
   - group: monitoring.coreos.com
     kind: PrometheusRule
+secrets:
+  store: true
 ```
 
 ## Images
@@ -153,11 +156,156 @@ deploys only the namespaced kinds of the allow-list of the chart and the `extraK
   service.
 - Its NetworkPolicy allow rules. The chart makes a default-deny policy in each namespace, so the
   service adds each allow rule that it needs, also between its own pods.
-- Its External Secrets Operator objects, as `extraKinds` that an admin reviewed. The chart refuses
-  `Secret`, `SecretStore` and each ESO generator but `Password`.
+- Its External Secrets Operator objects: with `secrets.store: true`, its `ExternalSecret` and
+  `PushSecret` objects and its `Password` generators ("Secrets"). The chart refuses `Secret`,
+  `SecretStore` and each ESO generator but `Password` in `extraKinds`.
 - Its alert rules, such as a `PrometheusRule` in `extraKinds`, and its dashboards.
 - Its backups, such as a k8up `Schedule` or a CloudNativePG `ScheduledBackup`, in a namespace with
   `backup: true`.
+
+## Secrets
+
+An entry with `secrets.store: true` gets the store namespace `<name>-secrets` and the SecretStore
+`store` in each of its namespaces (charts/service-tenant/README.md, "Secrets"). The service
+repository holds its `ExternalSecret`, `PushSecret` and `Password` objects. The store namespace
+holds the values that must stay when a namespace of the service is deleted and made again, and the
+values that a person types.
+
+### Remote key rule
+
+A remote key in the store namespace is `<namespace>.<secret>`: the namespace of the service that
+uses the value, a dot, and the name of the Secret in that namespace. The Kubernetes provider of ESO
+reads the remote key as the name of a Secret in the store namespace, and `property` as a key of the
+data of that Secret.
+
+All the namespaces of a service share its store namespace. A `PushSecret` with
+`updatePolicy: IfNotExists` writes a remote Secret only when it does not exist. Thus two
+namespaces that push one remote key write one remote Secret, and the second namespace gets the
+value of the first. With the namespace in the remote key, each namespace has its own remote Secret.
+
+### A generated value
+
+A value that can change, such as a session key: an `ExternalSecret` makes the Secret from a
+`Password` generator, with no store. `refreshPolicy: CreatedOnce` makes the value one time. A
+namespace that is made again gets a new value.
+
+```yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: session-key
+  namespace: example
+spec:
+  length: 32
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: session-key
+  namespace: example
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: session-key
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: session-key
+```
+
+### A value that must never change
+
+A value that must never change, such as the password of a database with data or an encryption key:
+a `PushSecret` writes a generated value into the store with `updatePolicy: IfNotExists`, and an
+`ExternalSecret` reads it back. The store keeps the value when the namespace is deleted, so the
+namespace that is made again gets the same value. `deletionPolicy: None` keeps the remote Secret
+when the `PushSecret` is deleted.
+
+```yaml
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: db-password
+  namespace: example-db
+spec:
+  length: 32
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: db-password
+  namespace: example-db
+spec:
+  refreshInterval: 1h
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  secretStoreRefs:
+    - kind: SecretStore
+      name: store
+  selector:
+    generatorRef:
+      apiVersion: generators.external-secrets.io/v1alpha1
+      kind: Password
+      name: db-password
+  data:
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: example-db.db-password
+          property: password
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: db-password
+  namespace: example-db
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: store
+  target:
+    name: db-password
+  data:
+    - secretKey: password
+      remoteRef:
+        key: example-db.db-password
+        property: password
+```
+
+### A typed value
+
+A value that a person types, such as the token of a service outside the cluster: the person writes
+the Secret `example.mail-token` with the key `token` into the store namespace `example-secrets`,
+for example from the sensitive values of the consumer. An `ExternalSecret` of the service reads it.
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: mail-token
+  namespace: example
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: store
+  target:
+    name: mail-token
+  data:
+    - secretKey: token
+      remoteRef:
+        key: example.mail-token
+        property: token
+```
 
 ## Checks
 

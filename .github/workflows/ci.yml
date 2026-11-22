@@ -72,6 +72,7 @@ jobs:
               - .github/workflows/k8s-validate.yml
               - .kube-linter.yaml
               - scripts/k8s-validate.sh
+              - tests/test-k8s-validate.sh
               - tests/test-kube-linter-config.sh
               - tests/test-service-repos.sh
               - version.txt
@@ -162,8 +163,10 @@ jobs:
       helm-charts: |
         charts/example
         charts/service-tenant
+        helm/external-secrets/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
+      trivy-ignorefile: helm/.trivyignore.yaml
 
   k8s-config:
     name: kube-linter config
@@ -219,15 +222,22 @@ jobs:
           install: false
           cache: false
 
-      - name: Install kustomize, yq, helm and kubeconform
+      - name: Install kustomize, yq, helm, kubeconform and trivy
         timeout-minutes: 3
-        run: mise install --locked kustomize yq helm kubeconform
+        run: mise install --locked kustomize yq helm kubeconform trivy
 
       # The test renders the test overlay and the Application templates of the ApplicationSets for
       # each test services entry, and checks them (tests/test-service-repos.sh).
       - name: Test the base service-repos
         timeout-minutes: 3
         run: mise exec -- tests/test-service-repos.sh
+
+      # The test runs the steps of scripts/k8s-validate.sh on fixtures: the render of a test chart
+      # and of each object to its own file, the schema of a CRD, and the scope of each entry of
+      # helm/.trivyignore.yaml (tests/test-k8s-validate.sh).
+      - name: Test scripts/k8s-validate.sh
+        timeout-minutes: 5
+        run: mise exec -- tests/test-k8s-validate.sh
 
   tofu:
     name: OpenTofu

@@ -1,0 +1,197 @@
+# The values template of the upstream chart external-secrets: External Secrets Operator (ESO) with
+# its CRDs (devops-cli ADR 0033). It holds only the settings that are true for each cluster. The
+# consumer gives this file to the chart, then its own values (README.md of this folder). The
+# requests, limits, probes and rolling updates are the checks of kube-linter (.kube-linter.yaml):
+# a consumer sets its own requests and limits.
+#
+# Helm merges maps and replaces lists. Thus a consumer that sets extraObjects also gives the
+# NetworkPolicies of this file again.
+
+# The CRDs of ESO, with the CRD of PushSecret, and the controller of PushSecret.
+installCRDs: true
+crds:
+  createPushSecret: true
+processPushSecret: true
+
+# One controller works at a time: the rolling update starts the new pod before the old pod stops.
+leaderElect: true
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# The Pod Security level restricted.
+podSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  enabled: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# The metrics of the controller on port 8080, with a Service for the scrape.
+metrics:
+  listen:
+    port: 8080
+  service:
+    enabled: true
+    port: 8080
+
+livenessProbe:
+  enabled: true
+readinessProbe:
+  enabled: true
+
+# The upstream NetworkPolicies have the types Ingress and Egress in one policy. The network policy
+# controller of k3s lets an egress rule of such a policy admit traffic that its ingress rules deny
+# (dan-petty/devops-cli#6707). Thus they stay off, and extraObjects gives one policy of one type for
+# each pod.
+networkPolicy:
+  enabled: false
+
+webhook:
+  # The API server calls the admission webhook on this port.
+  port: 10250
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  metrics:
+    listen:
+      port: 8080
+    service:
+      enabled: true
+      port: 8080
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  networkPolicy:
+    enabled: false
+
+certController:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  metrics:
+    listen:
+      port: 8080
+    service:
+      enabled: true
+      port: 8080
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  networkPolicy:
+    enabled: false
+
+# The NetworkPolicies of the three pods, each with one type. No pod gets ingress, but the webhook
+# port gets ingress from each source, because the API server calls the webhook from the address of
+# a node. The egress destinations, such as the API server and the providers, are values of one
+# cluster, so the consumer adds the egress policies.
+extraObjects:
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: '{{ include "external-secrets.fullname" . }}-deny-ingress'
+      namespace: '{{ include "external-secrets.namespace" . }}'
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "external-secrets.name" . }}'
+          app.kubernetes.io/instance: '{{ .Release.Name }}'
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: '{{ include "external-secrets.fullname" . }}-cert-controller-deny-ingress'
+      namespace: '{{ include "external-secrets.namespace" . }}'
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "external-secrets.name" . }}-cert-controller'
+          app.kubernetes.io/instance: '{{ .Release.Name }}'
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: '{{ include "external-secrets.fullname" . }}-webhook-ingress'
+      namespace: '{{ include "external-secrets.namespace" . }}'
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "external-secrets.name" . }}-webhook'
+          app.kubernetes.io/instance: '{{ .Release.Name }}'
+      policyTypes:
+        - Ingress
+      ingress:
+        - ports:
+            - protocol: TCP
+              port: 10250

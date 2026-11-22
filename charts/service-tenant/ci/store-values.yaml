@@ -1,0 +1,13 @@
+# The values of the second test render of k8s-validate.yml: one services entry with two namespaces
+# and the secret store of the service (README.md, "Secrets").
+name: example
+repoURL: https://git.example.com/example.git
+path: deploy
+targetRevision: main
+namespaces:
+  - name: example
+  - name: example-db
+    podSecurity: baseline
+    backup: true
+secrets:
+  store: true

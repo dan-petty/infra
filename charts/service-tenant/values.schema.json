@@ -12,7 +12,8 @@
     "targetRevision": ["name"],
     "namespaces": ["name"],
     "images": ["name"],
-    "extraKinds": ["name"]
+    "extraKinds": ["name"],
+    "secrets": ["name"]
   },
   "properties": {
     "reservedNamespaces": {
@@ -129,6 +130,17 @@
             "type": "string",
             "pattern": "^[A-Z][A-Za-z0-9]*$"
           }
+        }
+      }
+    },
+    "secrets": {
+      "description": "The secret store of the service.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "store": {
+          "description": "true makes the store namespace <name>-secrets, and the SecretStore store and the ServiceAccount eso-store in each namespace of the service. Default false.",
+          "type": "boolean"
         }
       }
     }

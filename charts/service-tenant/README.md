@@ -15,6 +15,7 @@ deploys only namespaced kinds of an allow-list into those namespaces.
 | `NetworkPolicy` `default-deny-egress` in each namespace | Type `Egress` only: DNS on UDP and TCP port 53 to the pods with `dns.podLabels` in `dns.namespace`. |
 | `LimitRange` `default-resources` in each namespace | The `default` and `defaultRequest` CPU and memory of each container, from `limitRange`. |
 | Traefik `Middleware` `security-headers` in each namespace | HSTS for one year with subdomains and no preload, `nosniff`, the frame option `SAMEORIGIN`, the referrer policy `strict-origin-when-cross-origin`, and a permissions policy that stops the camera, the microphone, the location, payments and USB. |
+| The objects of the secret store, when `secrets.store` is `true` | The store namespace `<name>-secrets`, and a `ServiceAccount` `eso-store` and a `SecretStore` `store` in each namespace of the entry ("Secrets"). |
 
 The allow-list of the AppProject has these kinds:
 
@@ -25,10 +26,36 @@ The allow-list of the AppProject has these kinds:
 - `traefik.io`: Middleware. `monitoring.coreos.com`: PodMonitor, ServiceMonitor.
 - `postgresql.cnpg.io`: Cluster, ScheduledBackup. `barmancloud.cnpg.io`: ObjectStore.
 - `k8up.io`: Schedule, PodConfig, Restore.
+- With the secret store only: `external-secrets.io`: ExternalSecret, PushSecret.
+  `generators.external-secrets.io`: Password.
 
-The list has no Secret, no Role, no RoleBinding and no SecretStore. Thus the service cannot write a
-Secret, give rights to a ServiceAccount, or read the Secrets of another namespace (devops-cli
-ADR 0033).
+The list has no Secret, no Role, no RoleBinding, no SecretStore and no ESO generator but Password.
+Thus the service cannot write a Secret, give rights to a ServiceAccount, read the Secrets of
+another namespace, or send a value out of the cluster (devops-cli ADR 0033). The Password generator
+makes a random value in the cluster. Another generator, such as the Webhook generator, can send
+data to an endpoint.
+
+## Secrets
+
+An entry with `secrets.store: true` gets one secret store of External Secrets Operator (ESO). The
+cluster has the operator, for example from the values template `helm/external-secrets` of infra.
+
+| Object | Content |
+| --- | --- |
+| `Namespace` `<name>-secrets` | The store namespace. `pod-security.kubernetes.io/enforce`, `warn` and `audit` are `restricted`. The sync options `Prune=false,Delete=false`. No pod runs in it. |
+| `Role` `eso-store` in the store namespace | `get`, `list`, `watch`, `create` and `update` on `secrets`, and nothing more. |
+| `ServiceAccount` `eso-store` in each namespace of the entry | `automountServiceAccountToken: false`. ESO requests a token of it for the SecretStore. |
+| `SecretStore` `store` in each namespace of the entry | The Kubernetes provider of ESO: `remoteNamespace: <name>-secrets`, `server.url: https://kubernetes.default.svc`, the CA of the ConfigMap `kube-root-ca.crt`, and `auth.serviceAccount.name: eso-store`. |
+| `RoleBinding` `eso-store-<namespace>` in the store namespace for each namespace of the entry | Binds the Role `eso-store` to the ServiceAccount `eso-store` of that namespace. |
+
+The Kubernetes provider reads one remote namespace, and a store can read each Secret of it. Thus
+each service has its own store namespace, and the chart makes no ClusterSecretStore. All the
+namespaces of a service share its store namespace. The store namespace is no destination of the
+AppProject of the service, and the AppProject has no SecretStore and no RBAC kind, so the service
+can point no store at another namespace. The service reads and writes its store only through the
+SecretStore `store`, with ExternalSecret and PushSecret objects. A remote key in the store
+namespace is `<namespace>.<secret>` ([docs/service-repos.md](../../docs/service-repos.md),
+"Secrets").
 
 ## Network
 
@@ -72,6 +99,7 @@ Keys of the services entry:
 | `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` (`restricted` or `baseline`, default `restricted`) and `backup` (default `false`). |
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. No glob. |
+| `secrets.store` | No | `true` gives the service its secret store ("Secrets"). Default `false`. |
 
 The chart does not read `path`, `targetRevision` and `images`. The schema checks them for the
 Application of the service, which the consumer renders from the same entry.
@@ -95,6 +123,9 @@ The template `guards.yaml` stops the render when the entry:
 - has a `name` of `reservedProjects`, because its AppProject would replace that project;
 - has a namespace of `reservedNamespaces`, `argocd.namespace` or `dns.namespace`, or one namespace
   two times;
+- has the store, and its store namespace `<name>-secrets` has more than 63 characters (a `name` of
+  more than 55 characters), is a namespace of the entry, or is a namespace of
+  `reservedNamespaces`, `argocd.namespace` or `dns.namespace`;
 - has an extra kind `Secret`, `Role`, `RoleBinding`, `ClusterRole`, `ClusterRoleBinding`,
   `SecretStore` or `ClusterSecretStore`, in each group;
 - has an extra kind of the group `generators.external-secrets.io` other than `Password`.
@@ -104,8 +135,9 @@ entry and the platform values are in one environment repository, where only a pe
 
 ## Tests
 
-The unit tests are in `tests/`, and the values of the test render are in `ci/test-values.yaml`. The
-K8s job of CI runs them (README.md of the repository, "Checks").
+The unit tests are in `tests/`. The values of the test renders are in `ci/test-values.yaml` and,
+with the secret store, in `ci/store-values.yaml`. The K8s job of CI runs them (README.md of the
+repository, "Checks").
 
 ## Consumers
 

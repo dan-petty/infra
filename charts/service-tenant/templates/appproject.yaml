@@ -2,6 +2,9 @@
 The AppProject of the service. The service Application deploys only from the repository of the
 service, only into the namespaces of the service, and only the namespaced kinds of the allow-list.
 The list holds no Secret, no RBAC kind and no SecretStore, and no cluster-scoped kind is allowed.
+With the store (secrets.store), the list adds ExternalSecret, PushSecret and the generator
+Password, which makes a value in the cluster and sends no data out. The store namespace is no
+destination.
 */ -}}
 {{- if .Values.name }}
 {{- $kinds := list
@@ -27,6 +30,13 @@ The list holds no Secret, no RBAC kind and no SecretStore, and no cluster-scoped
   (dict "group" "k8up.io" "kind" "PodConfig")
   (dict "group" "k8up.io" "kind" "Restore")
 }}
+{{- if include "service-tenant.store" . }}
+{{- $kinds = concat $kinds (list
+  (dict "group" "external-secrets.io" "kind" "ExternalSecret")
+  (dict "group" "external-secrets.io" "kind" "PushSecret")
+  (dict "group" "generators.external-secrets.io" "kind" "Password")
+) }}
+{{- end }}
 {{- range .Values.extraKinds | default list }}
 {{- $kinds = append $kinds (dict "group" .group "kind" .kind) }}
 {{- end }}

@@ -131,6 +131,13 @@ expect "services-admin: Namespace is the only cluster-scoped kind" "$project" \
 expect "services-admin: argocd for the AppProjects, and each namespace but the reserved ones" "$project" \
   '[.spec.destinations[] | .namespace]' \
   '["argocd", "*", "!kube-system", "!kube-public", "!kube-node-lease", "!default", "!monitoring"]'
+expect "services-admin: only the namespaced kinds that the chart renders, with the kinds of the store" "$project" \
+  '.spec.namespaceResourceWhitelist' \
+  '[{"group": "argoproj.io", "kind": "AppProject"}, {"group": "networking.k8s.io", "kind": "NetworkPolicy"},
+    {"group": "", "kind": "LimitRange"}, {"group": "traefik.io", "kind": "Middleware"},
+    {"group": "", "kind": "ServiceAccount"}, {"group": "rbac.authorization.k8s.io", "kind": "Role"},
+    {"group": "rbac.authorization.k8s.io", "kind": "RoleBinding"},
+    {"group": "external-secrets.io", "kind": "SecretStore"}]'
 
 expect "service-repos: in argocd, with only the label selector and the annotation mode" "$updater" \
   '[.metadata.namespace, .spec]' \
@@ -251,6 +258,15 @@ for entry in "$overlay"/services/*.yaml; do
     pass "$file: services-admin permits each object of the chart"
   else
     fail "$file: services-admin permits each object of the chart: it refuses $refused"
+  fi
+  # An entry with the store gives the check above the store objects: a SecretStore in each
+  # namespace of the entry, and the Role and the RoleBindings in the store namespace.
+  if [ "$(yq '.secrets.store // false' "$entry")" = true ]; then
+    yq ea '[select(.kind == "SecretStore" or .kind == "Role" or .kind == "RoleBinding") |
+      .kind + " " + .metadata.namespace] | sort' "$work/chart-$name.yaml" >"$work/store-$name.yaml"
+    expect "$file: the chart renders the store objects of tenant-$name" "$work/store-$name.yaml" '.' \
+      "$(yq '.name as $n | [(.namespaces[] | "SecretStore " + .name), "Role " + $n + "-secrets",
+        (.namespaces[] | "RoleBinding " + $n + "-secrets")] | sort | to_json(0)' "$entry")"
   fi
 done
 

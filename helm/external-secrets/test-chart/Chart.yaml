@@ -1,0 +1,11 @@
+apiVersion: v2
+name: test-chart
+description: >-
+  The test chart of the values template helm/external-secrets/values.yaml. It pins the upstream
+  chart external-secrets at one exact version.
+type: application
+version: 0.1.0
+dependencies:
+  - name: external-secrets
+    version: 2.15.0
+    repository: oci://ghcr.io/external-secrets/charts
