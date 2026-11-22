@@ -110,6 +110,8 @@ jobs:
               - tests/test-renovate-presets.sh
             template:
               - *python
+              - .github/workflows/pr-title.yml
+              - .github/workflows/release.yml
               - .yamllint.yaml
               - copier.yml
               - templates/**
@@ -544,8 +546,9 @@ jobs:
         run: mise exec -- uv sync --frozen
 
       # The test renders the template with each answer set and checks the files with actionlint,
-      # yamllint, pre-commit, check-jsonschema and the config validator of Renovate
-      # (tests/test-repository-template.sh). npx installs the Renovate release of the test, and
+      # yamllint, tomllib, pre-commit, check-jsonschema and the config validator of Renovate
+      # (tests/test-repository-template.sh). It also checks that infra holds each reusable workflow
+      # that a rendered caller calls. npx installs the Renovate release of the test, and
       # check-jsonschema downloads the release-please schemas of the test.
       - name: Render and check the template with each answer set
         timeout-minutes: 6

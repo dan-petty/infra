@@ -23,9 +23,10 @@ release_flow:
   type: bool
   help: >-
     Make releases with release-please: a release pull request, the tag vX.Y.Z and the GitHub
-    release. Answer false for a private repository on the GitHub Free plan, which has no
-    environments (devops-cli#6773, decision D2).
-  default: true
+    release. The release job runs in the environment release, which a private repository on the
+    GitHub Free plan does not have (devops-cli#6773, decision D2). So the default is false, and the
+    caller answers true for a repository with environments.
+  default: false
 
 release_type:
   type: str

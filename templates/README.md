@@ -23,7 +23,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 
 | Question | Default | Content |
 | --- | --- | --- |
-| `release_flow` | `true` | Make releases with release-please. With `false`, the repository gets no release workflow, no release-please files and no environment `release`. Answer `false` for a private repository on the GitHub Free plan: it has no environments, and the key of the release App never goes into a repository secret (devops-cli#6773, decision D2). |
+| `release_flow` | `false` | Make releases with release-please. With `false`, the repository gets no release workflow, no release-please files and no environment `release`. A private repository on the GitHub Free plan has no environments, and the key of the release App never goes into a repository secret (devops-cli#6773, decision D2). So the default is `false`, and the caller answers `true` for a repository with environments. |
 | `release_type` | `simple` | The release type of release-please: `simple`, `python` or `node`. Only `simple` gets `version.txt`. A `python` or `node` repository holds its version in its `pyproject.toml` or `package.json`. Copier asks it only when `release_flow` is `true`. |
 | `scopes` | empty | The Conventional Commit scopes of the repository, separated by commas. Each scope gets a label `scope/<scope>`. The template always adds `ci`, `deps` and `docs`. Copier refuses a scope that is not a lowercase name, and the scope `main` of the release pull request. |
 | `code_owner` | `@dan-petty` | The code owner of each file in `.github/CODEOWNERS`. |
@@ -38,15 +38,15 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `.github/labels.yml` | The labels of the repository only: one `scope/<scope>` label for each scope, and with the release flow the two `autorelease:` labels of release-please. The workflow labels come from devops-cli. |
 | `.github/CODEOWNERS` | `* <code_owner>`: GitHub asks the code owner to review each pull request. |
 | `.github/workflows/pr-title.yml` | Calls the reusable workflow `dan-petty/infra/.github/workflows/pr-title.yml@<infra_ref>`, which checks the pull request title. |
-| `.github/workflows/release.yml` | With the release flow: calls the reusable workflow `dan-petty/infra/.github/workflows/release.yml@<infra_ref>` on each push to `main`, with `secrets: inherit`. The job of the reusable workflow runs in the environment `release`, which holds the credentials of the release App. |
+| `.github/workflows/release.yml` | With the release flow: calls the reusable workflow `dan-petty/infra/.github/workflows/release.yml@<infra_ref>` on each push to `main`. It gives the job token no permission and passes the secret `RELEASE_APP_PRIVATE_KEY` by name, with no `secrets: inherit`. The job of the reusable workflow runs in the environment `release`, which holds the credentials of the release App, and gets the value of the secret of the environment. |
 | `release-please-config.json`, `.release-please-manifest.json` | With the release flow: the release type, the tag `vX.Y.Z` and the first release `v0.1.0`. |
 | `version.txt` | With the release type `simple`: the version that release-please writes. |
 | `.pre-commit-config.yaml` | The hooks of `pre-commit-hooks`: no commit on `main`, the syntax of the YAML, JSON and TOML files, no private key, no large file, no conflict marker, and LF line endings with no trailing whitespace. infra's Renovate updates `rev` in the template. |
 | `github/repository.yaml` | The settings baseline ("Settings baseline"). |
+| `openspec/config.yaml` | The OpenSpec config, with the schema `spec-driven`. The file tells devops-cli that the repository plans each roadmap item as an OpenSpec change. Its rules are those of the jobs of devops-cli, and its context holds no fact of the repository: a person writes the first line, which tells what the repository makes. |
+| `.devops/project.toml` | The project profile of devops-cli, with no key: a new repository has no fact that the detection of devops-cli does not find. devops-cli owns its keys. |
 
-A file that only one repository needs stays in that repository. The template holds no
-`openspec/config.yaml` and no `.devops/project.toml`: devops-cli reads both files and owns their
-keys, and it has no source of them for a new repository (devops-cli#3770).
+A file that only one repository needs stays in that repository.
 
 ## Settings baseline
 
@@ -88,18 +88,23 @@ after the type, so the release gets the next major version ("Releases").
 
 `tests/test-repository-template.sh` (CI job "Repository template") renders the template with
 `copier copy --defaults --vcs-ref HEAD` and no `--trust` into a temporary folder, with each answer
-set: the default answers, each release type with two scopes, and no release flow. `--vcs-ref HEAD`
-renders the working tree, also the changes that are not committed. Then it checks the rendered
-files:
+set: the default answers (no release flow), and the release flow with each release type and two
+scopes. `--vcs-ref HEAD` renders the working tree, also the changes that are not committed. Then it
+checks the rendered files:
 
 - the set of files of the answer set, and no file with the suffix `.jinja`,
-- `actionlint` on the workflows, `yamllint --strict` with `.yamllint.yaml` on each YAML file, and
-  `pre-commit validate-config` on `.pre-commit-config.yaml`,
+- `actionlint` on the workflows, `yamllint --strict` with `.yamllint.yaml` on each YAML file,
+  `tomllib` on `.devops/project.toml`, `pre-commit validate-config` on `.pre-commit-config.yaml`,
+  and the schema `spec-driven` of `openspec/config.yaml`,
 - `check-jsonschema`: `github/repository.yaml` with `github-repository.schema.json`, and the
   release-please files with the schemas of the release-please release of the test,
 - the config validator of Renovate, in strict mode, on `.github/renovate.json`,
 - the answers in the files: the scope labels, the release type, the environment `release`, the tag
-  of infra in the callers (`infra_ref`, else `_commit`) and the code owner,
+  of infra in the callers (`infra_ref`, else `_commit`), the secret that the release caller passes
+  by name, and the code owner,
+- that infra holds each workflow that a caller calls as a reusable workflow (`on: workflow_call`),
+  with each secret that the release caller passes. A release tag of infra then holds each workflow
+  that the repositories rendered at that tag call,
 - that Copier refuses a scope that is not a lowercase name, and the scope `main`.
 
 ```sh

@@ -6,13 +6,17 @@
 # changes that are not committed. Then it checks the rendered files:
 #   - the set of files: the release files only when the release flow is on, version.txt only for
 #     the release type simple, and no file with the suffix .jinja,
-#   - actionlint on the workflows, yamllint --strict on each YAML file, pre-commit validate-config,
+#   - actionlint on the workflows, yamllint --strict on each YAML file, tomllib on
+#     .devops/project.toml, pre-commit validate-config, and the schema spec-driven of
+#     openspec/config.yaml,
 #   - check-jsonschema: github/repository.yaml with templates/github-repository.schema.json, and the
 #     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
 #   - the config validator of Renovate, in strict mode, on .github/renovate.json,
 #   - the answers in the files: the scope labels, the release type, the environment release, the
-#     tag of infra in the callers of the reusable workflows (infra_ref, else _commit) and the code
-#     owner,
+#     tag of infra in the callers of the reusable workflows (infra_ref, else _commit), the secret
+#     that the release caller passes by name, and the code owner,
+#   - that infra holds each workflow that a caller calls as a reusable workflow, with each secret
+#     that the release caller passes,
 #   - that Copier refuses a scope that is not a lowercase name.
 # Run it from the repository root after `uv sync --frozen`: `mise exec -- tests/test-repository-template.sh`.
 # npx installs the Renovate release of RENOVATE_VERSION with the Node of mise.toml, and runs no
@@ -87,6 +91,9 @@ validate() {
   check "$1: actionlint" actionlint "$dir"/.github/workflows/*.yml
   check "$1: yamllint --strict" yamllint --strict -c "$root/.yamllint.yaml" "${yaml[@]}"
   check "$1: pre-commit validate-config" pre-commit validate-config "$dir/.pre-commit-config.yaml"
+  check "$1: .devops/project.toml is TOML" python -c \
+    'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$dir/.devops/project.toml"
+  expect "$1: the OpenSpec schema" "spec-driven" "$(yq -r '.schema' "$dir/openspec/config.yaml")"
   check "$1: github/repository.yaml matches its schema" check-jsonschema \
     --schemafile "$root/templates/github-repository.schema.json" "$dir/github/repository.yaml"
   if [ -f "$dir/release-please-config.json" ]; then
@@ -111,30 +118,29 @@ check "the schema of github/repository.yaml is a valid JSON Schema" check-jsonsc
   --check-metaschema "$root/templates/github-repository.schema.json"
 
 common='.copier-answers.yml
+.devops/project.toml
 .github/CODEOWNERS
 .github/labels.yml
 .github/renovate.json
 .github/workflows/pr-title.yml
 .pre-commit-config.yaml
-github/repository.yaml'
+github/repository.yaml
+openspec/config.yaml'
 release='.github/workflows/release.yml
 .release-please-manifest.json
 release-please-config.json'
 
-# The default answers: the release flow with the release type simple, and no scope of its own.
+# The default answers: no release flow (decision D2 of devops-cli#6773: a private repository on the
+# Free plan) and no scope of its own. The repository gets no release workflow, no release-please
+# file and no environment release.
 render defaults
 validate defaults
-expect "defaults: files" "$(printf '%s\n%s\nversion.txt' "$common" "$release" | LC_ALL=C sort)" \
-  "$(files "$work/defaults")"
-expect "defaults: labels" "scope/ci scope/deps scope/docs autorelease: pending autorelease: tagged" \
-  "$(labels defaults)"
-expect "defaults: release type" "simple" "$(jq -r '."release-type"' "$work/defaults/release-please-config.json")"
-expect "defaults: the environment release" "release" \
-  "$(yq -r '[.environments[].name] | join(" ")' "$work/defaults/github/repository.yaml")"
+expect "defaults: files" "$(printf '%s\n' "$common" | LC_ALL=C sort)" "$(files "$work/defaults")"
+expect "defaults: labels" "scope/ci scope/deps scope/docs" "$(labels defaults)"
+expect "defaults: no environment" "0" \
+  "$(yq -r '.environments // [] | length' "$work/defaults/github/repository.yaml")"
 expect "defaults: the pin of the reusable PR title workflow" \
   "dan-petty/infra/.github/workflows/pr-title.yml@$ref" "$(uses defaults pr-title.yml)"
-expect "defaults: the pin of the reusable release workflow" \
-  "dan-petty/infra/.github/workflows/release.yml@$ref" "$(uses defaults release.yml)"
 expect "defaults: code owner" "* @dan-petty" "$(grep -v '^#' "$work/defaults/.github/CODEOWNERS")"
 check "defaults: renovate-config-validator --strict" npx --yes --package "renovate@$RENOVATE_VERSION" \
   -- renovate-config-validator --strict "$work/defaults/.github/renovate.json"
@@ -147,10 +153,10 @@ expect "commit: the pin of the reusable PR title workflow" \
   "dan-petty/infra/.github/workflows/pr-title.yml@$(yq -r '._commit' "$work/commit/.copier-answers.yml")" \
   "$(uses commit pr-title.yml)"
 
-# Each release type, with two scopes of the repository. A scope of the template, here docs, comes
-# once.
+# The release flow with each release type, and two scopes of the repository. A scope of the
+# template, here docs, comes once.
 for type in simple python node; do
-  render "$type" "release_type=$type" "scopes=api, worker,docs"
+  render "$type" release_flow=true "release_type=$type" "scopes=api, worker,docs"
   validate "$type"
   want="$(printf '%s\n%s' "$common" "$release")"
   if [ "$type" = simple ]; then
@@ -164,14 +170,35 @@ for type in simple python node; do
     "$(jq -r '."release-type"' "$work/$type/release-please-config.json")"
 done
 
-# No release flow (decision D2 of devops-cli#6773: a private repository on the Free plan): no release
-# workflow, no release-please files and no environment release.
-render no-release release_flow=false
-validate no-release
-expect "no-release: files" "$common" "$(files "$work/no-release")"
-expect "no-release: labels" "scope/ci scope/deps scope/docs" "$(labels no-release)"
-expect "no-release: no environment" "0" \
-  "$(yq -r '.environments // [] | length' "$work/no-release/github/repository.yaml")"
+# The release caller pins the tag of infra, gives the job token no permission, and passes the
+# secret of the release App by name, never with `secrets: inherit`. The job of the reusable workflow
+# gets the value of the secret of the environment release.
+expect "simple: the environment release" "release" \
+  "$(yq -r '[.environments[].name] | join(" ")' "$work/simple/github/repository.yaml")"
+expect "simple: the pin of the reusable release workflow" \
+  "dan-petty/infra/.github/workflows/release.yml@$ref" "$(uses simple release.yml)"
+expect "simple: the permissions of the release caller" "{}" \
+  "$(yq -o=json -I=0 '.jobs.release.permissions' "$work/simple/.github/workflows/release.yml")"
+# shellcheck disable=SC2016 # The expression of GitHub Actions, not of the shell.
+expect "simple: the secrets of the release caller" \
+  'RELEASE_APP_PRIVATE_KEY=${{ secrets.RELEASE_APP_PRIVATE_KEY }}' \
+  "$(yq -r '.jobs.release.secrets | select(tag == "!!map") | to_entries |
+    map(.key + "=" + .value) | join(" ")' "$work/simple/.github/workflows/release.yml")"
+
+# A repository that infra renders at a release tag calls the workflows of infra at that tag, so the
+# same commit of infra holds each workflow that a caller calls, as a reusable workflow
+# (on: workflow_call). The release caller passes each secret that the reusable release workflow
+# declares.
+while read -r called; do
+  path="${called#dan-petty/infra/}"
+  path="${path%@*}"
+  check "infra holds the reusable workflow $path" yq -e '.on | has("workflow_call")' "$root/$path"
+done < <(yq --no-doc -r '.jobs[].uses' "$work/simple"/.github/workflows/*.yml | LC_ALL=C sort -u)
+expect "the release caller passes each secret of the reusable release workflow" \
+  "$(yq -r '(.on.workflow_call.secrets // {}) | keys | join(" ")' \
+    "$root/.github/workflows/release.yml")" \
+  "$(yq -r '.jobs.release.secrets | select(tag == "!!map") | keys | join(" ")' \
+    "$work/simple/.github/workflows/release.yml")"
 
 # Copier refuses a scope that is not a lowercase name, and the scope main of the release pull request.
 for scopes in "Bad Scope" "api,main"; do
