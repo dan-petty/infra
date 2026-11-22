@@ -1,0 +1,70 @@
+# The Copier template of a new repository of dan-petty (templates/README.md). `devops repos onboard`
+# renders it at a release tag of infra, with the answers of its flags:
+#   copier copy --vcs-ref vX.Y.Z --data scopes=api https://github.com/dan-petty/infra.git <dir>
+# Copier renders only the files of templates/repository/. A file with the suffix .jinja holds an
+# answer: Copier renders it and removes the suffix. Copier copies each other file as it is. The
+# template has no _tasks and no _jinja_extensions, so Copier runs it without --trust. Copier writes
+# the answers into .copier-answers.yml, and the copier manager of Renovate updates the repository to
+# each new release tag of infra with `copier update`.
+
+# Copier 9.2.0 matches each pattern of _exclude with the rendered path, with no suffix .jinja.
+_min_copier_version: "9.2.0"
+_subdirectory: templates/repository
+
+# The files of the release flow. A repository with no release flow gets none of them, and
+# version.txt is the version file of the release type simple only.
+_exclude:
+  - "{% if not release_flow %}.github/workflows/release.yml{% endif %}"
+  - "{% if not release_flow %}release-please-config.json{% endif %}"
+  - "{% if not release_flow %}.release-please-manifest.json{% endif %}"
+  - "{% if not (release_flow and release_type == 'simple') %}version.txt{% endif %}"
+
+release_flow:
+  type: bool
+  help: >-
+    Make releases with release-please: a release pull request, the tag vX.Y.Z and the GitHub
+    release. The release job runs in the environment release, which a private repository on the
+    GitHub Free plan does not have (devops-cli#6773, decision D2). So the default is false, and the
+    caller answers true for a repository with environments.
+  default: false
+
+release_type:
+  type: str
+  help: The release-please release type, which names the version file of the repository.
+  choices:
+    - simple
+    - python
+    - node
+  default: simple
+  when: "{{ release_flow }}"
+
+scopes:
+  type: str
+  help: >-
+    The Conventional Commit scopes of the repository, separated by commas, such as api,worker. Each
+    scope gets a label scope/<scope>. The template always adds the scopes ci, deps and docs.
+  default: ""
+  validator: >-
+    {% for scope in scopes.split(',') | map('trim') | reject('equalto', '') -%}
+    {% if not (scope | regex_search('^[a-z0-9]+(-[a-z0-9]+)*$')) -%}
+    The scope "{{ scope }}" is not a lowercase name, such as api or event-stream.
+    {% elif scope == 'main' -%}
+    The scope main is the scope of the release pull request of release-please.
+    {% endif %}{% endfor %}
+
+code_owner:
+  type: str
+  help: The code owner of each file, whom GitHub asks to review each pull request.
+  default: "@dan-petty"
+  validator: >-
+    {% if not (code_owner | regex_search('^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$')) -%}
+    The code owner is a GitHub user or team, such as @dan-petty.
+    {% endif %}
+
+# The release tag of infra that the callers of the reusable workflows pin. Copier gives _commit, the
+# tag that it renders, so the callers always call the workflows of that tag. Copier does not ask it
+# and does not write it into .copier-answers.yml, so `copier update` gives the callers the new tag.
+infra_ref:
+  type: str
+  when: false
+  default: "{{ _commit }}"

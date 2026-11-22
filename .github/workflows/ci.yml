@@ -44,6 +44,7 @@ jobs:
       actions: ${{ steps.filter.outputs.actions }}
       shell: ${{ steps.filter.outputs.shell }}
       renovate: ${{ steps.filter.outputs.renovate }}
+      template: ${{ steps.filter.outputs.template }}
 
     steps:
       # A pull request gives its files through the API. A push compares the commits with git.
@@ -107,6 +108,14 @@ jobs:
               - renovate/**
               - tests/renovate/**
               - tests/test-renovate-presets.sh
+            template:
+              - *python
+              - .github/workflows/pr-title.yml
+              - .github/workflows/release.yml
+              - .yamllint.yaml
+              - copier.yml
+              - templates/**
+              - tests/test-repository-template.sh
 
   private-data:
     name: Private-data guard
@@ -504,3 +513,43 @@ jobs:
         env:
           RENOVATE_GITHUB_COM_TOKEN: ${{ github.token }}
         run: mise exec -- tests/test-renovate-presets.sh
+
+  template:
+    name: Repository template
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.template == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.12"
+          install: false
+          cache: false
+
+      - name: Install uv, Node, actionlint, shellcheck, jq and yq
+        timeout-minutes: 3
+        run: mise install --locked uv node actionlint shellcheck jq yq
+
+      - name: Install the Python tools of uv.lock
+        timeout-minutes: 5
+        run: mise exec -- uv sync --frozen
+
+      # The test renders the template with each answer set and checks the files with actionlint,
+      # yamllint, tomllib, pre-commit, check-jsonschema and the config validator of Renovate
+      # (tests/test-repository-template.sh). It also checks that infra holds each reusable workflow
+      # that a rendered caller calls. npx installs the Renovate release of the test, and
+      # check-jsonschema downloads the release-please schemas of the test.
+      - name: Render and check the template with each answer set
+        timeout-minutes: 6
+        run: mise exec -- tests/test-repository-template.sh

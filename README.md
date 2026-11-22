@@ -26,6 +26,7 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `tf/modules/` | OpenTofu modules. |
 | `tf/examples/` | An example for each OpenTofu module. |
 | `renovate/` | Renovate presets that other repositories extend. |
+| `templates/` | The files of the Copier template of a new repository (`templates/repository/`, with the questions in `copier.yml` in the root) and the schema of its settings baseline. |
 | `docs/` | Documents that apply to more than one template. |
 | `.github/workflows/` | CI (`ci.yml`), the reusable workflows `k8s-validate.yml`, `pr-title.yml` and `release.yml`, and the callers of infra: the title check (`pr-title-caller.yml`) and the releases (`release-caller.yml`). |
 
@@ -37,8 +38,10 @@ The real templates so far are the Renovate presets in `renovate/` (dan-petty/inf
 Ansible roles `nvidia`, `gvisor` and `cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey`
 with its components `valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13),
 the base `k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)),
-the values template `helm/external-secrets` of External Secrets Operator (dan-petty/infra#12), and
-the OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9).
+the values template `helm/external-secrets` of External Secrets Operator (dan-petty/infra#12), the
+OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9), and
+the Copier template of a new repository (dan-petty/infra#37, [templates/README.md](templates/README.md)).
+The fixture of `templates/` is each answer set of `tests/test-repository-template.sh`.
 More templates come with later items, such as #8 (the Ansible role common and plays) and #14 to
 #19 (Kubernetes bases and components, and Helm values templates).
 
@@ -53,6 +56,7 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 | Ansible collection | `name: https://github.com/dan-petty/infra.git#/ansible/`, `type: git`, `version: vX.Y.Z` |
 | OpenTofu module | `git::https://github.com/dan-petty/infra.git//tf/modules/<module>?ref=vX.Y.Z` |
 | Reusable workflow | `uses: dan-petty/infra/.github/workflows/<workflow>.yml@vX.Y.Z` |
+| Copier template | `copier copy --vcs-ref vX.Y.Z https://github.com/dan-petty/infra.git <dir>`, which writes `_commit: vX.Y.Z` into `.copier-answers.yml` ([templates/README.md](templates/README.md)) |
 
 ## Releases
 
@@ -245,7 +249,8 @@ The repository pins each tool of the checks. `mise.toml` and `mise.lock` pin the
 promtool, shellcheck, tflint, trivy, uv and yq), with the checksum of each download. The test of the
 Renovate presets runs the Renovate release of `tests/test-renovate-presets.sh` with the `npx` of
 that Node. `pyproject.toml` and `uv.lock` pin the Python tools (ansible-core, ansible-lint,
-pre-commit, yamllint and zizmor). Install them into one shared cache folder and into `.venv`:
+check-jsonschema, Copier, pre-commit, yamllint and zizmor). Install them into one shared cache
+folder and into `.venv`:
 
 ```sh
 export MISE_DATA_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/infra-tools/mise"
@@ -274,6 +279,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | actionlint | `mise exec -- actionlint` and `mise exec -- tests/test-pr-title-scopes.sh` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |
 | Renovate presets | `mise exec -- tests/test-renovate-presets.sh`, with a GitHub token in `RENOVATE_GITHUB_COM_TOKEN` for the lookup ([renovate/README.md](renovate/README.md#test)) |
+| Repository template | `mise exec -- tests/test-repository-template.sh` ([templates/README.md](templates/README.md#test)) |
 
 ## Private-data guard
 
