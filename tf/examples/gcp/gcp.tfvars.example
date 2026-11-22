@@ -1,0 +1,21 @@
+# The values of a test for tf/examples/gcp. A consumer copies this file and sets its own values.
+# The subnet and the Services range share 192.0.2.0/24, the Pods range is 198.51.100.0/24 and the
+# authorized range is 203.0.113.0/24: RFC 5737 blocks, so the file holds no private address. A
+# consumer sets api_server_authorized_ip_ranges to the public ranges of its operators.
+project_id                      = "example-project"
+region                          = "us-central1"
+cluster_name                    = "example-gke"
+network_name                    = "example-vpc"
+subnet_cidr                     = "192.0.2.0/25"
+pods_cidr                       = "198.51.100.0/24"
+services_cidr                   = "192.0.2.128/25"
+api_server_authorized_ip_ranges = ["203.0.113.0/24"]
+machine_type                    = "e2-standard-4"
+node_count                      = 3
+min_node_count                  = 2
+max_node_count                  = 5
+deletion_protection             = true
+labels = {
+  environment = "example"
+  managed-by  = "opentofu"
+}

@@ -1,0 +1,25 @@
+# The written judgments of the trivy config scan of tf/ (README.md, "Checks"). Each entry names one
+# finding ID, the file of the maintained module that has the finding, the reason and an expiry date.
+# After the date, the scan reports the finding again, and a person checks the judgment again.
+misconfigurations:
+  # The recommended rules of the EKS module give the node security group the rule egress_all to
+  # 0.0.0.0/0. The nodes pull the images of the stack from public registries and call the AWS APIs
+  # through the NAT gateway, so they need egress to the internet. The nodes have no public address,
+  # and the cluster API has a private endpoint only.
+  - id: AWS-0104
+    paths:
+      - terraform-aws-modules/eks/aws/node_groups.tf
+    statement: >-
+      The EKS nodes need internet egress through the NAT gateway for public images and AWS APIs
+      (dan-petty/infra#9)
+    expired_at: 2026-12-06
+  # A false finding: the GKE module sets workload_metadata_config.mode to GKE_METADATA in a dynamic
+  # block of node_config, and trivy 0.76.2 does not expand a dynamic block in node_config. The same
+  # value in a static block passes the check.
+  - id: GCP-0057
+    paths:
+      - terraform-google-modules/kubernetes-engine/google/cluster.tf
+    statement: >-
+      False finding: trivy does not expand the dynamic workload_metadata_config block of the GKE
+      module, which sets mode GKE_METADATA (dan-petty/infra#9)
+    expired_at: 2026-12-06

@@ -235,7 +235,7 @@ jobs:
     if: >-
       !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.tofu == 'true')
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
 
@@ -252,9 +252,9 @@ jobs:
           install: false
           cache: false
 
-      - name: Install OpenTofu and tflint
+      - name: Install OpenTofu, tflint and trivy
         timeout-minutes: 3
-        run: mise install --locked opentofu tflint
+        run: mise install --locked opentofu tflint trivy
 
       - name: Check the format
         timeout-minutes: 2
@@ -269,8 +269,26 @@ jobs:
           mise exec -- tflint --init --config "$PWD/.tflint.hcl"
           mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"
 
+      # trivy config scans each example with the registry modules that it calls, and with the
+      # values of its <folder>.tfvars.example, so it can evaluate the expressions that use a
+      # variable. tf/.trivyignore.yaml holds the written judgment of each finding that stays.
+      - name: Scan each example with trivy config
+        timeout-minutes: 5
+        run: |
+          for example in tf/examples/*/; do
+            echo "trivy config $example"
+            tfvars="${example}$(basename "$example").tfvars.example"
+            vars=()
+            if [ -f "$tfvars" ]; then
+              vars=(--tf-vars "$tfvars")
+            fi
+            mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL \
+              --ignorefile tf/.trivyignore.yaml "${vars[@]}" "$example"
+          done
+
+      # tofu init downloads the registry modules and the providers of the lock file of each example.
       - name: Validate each example
-        timeout-minutes: 3
+        timeout-minutes: 5
         run: |
           for example in tf/examples/*/; do
             echo "tofu validate $example"

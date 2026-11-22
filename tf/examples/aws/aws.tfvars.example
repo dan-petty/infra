@@ -1,0 +1,14 @@
+# The values of a test for tf/examples/aws. A consumer copies this file and sets its own values.
+# The VPC uses the RFC 5737 block 192.0.2.0/24, so the file holds no private address.
+aws_region            = "us-west-2"
+cluster_name          = "example-eks"
+vpc_cidr              = "192.0.2.0/24"
+availability_zones    = ["us-west-2a", "us-west-2b", "us-west-2c"]
+node_instance_types   = ["t3.xlarge"]
+node_desired_capacity = 3
+node_min_capacity     = 2
+node_max_capacity     = 5
+tags = {
+  Environment = "example"
+  ManagedBy   = "opentofu"
+}
