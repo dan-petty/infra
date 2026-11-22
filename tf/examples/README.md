@@ -13,9 +13,10 @@ values of a test: `example.com` and RFC 5737 addresses. An example has no backen
 The examples `aws`, `azure` and `gcp` configure the provider of their cloud, pin its exact version
 in `versions.tf`, and pin each provider of the modules in `.terraform.lock.hcl`. Each one declares
 the inputs of its module as variables, and `<folder>.tfvars.example` gives a value to each
-variable. A consumer runs `tofu init` and `tofu plan` in the example with a copy of that file, as
-devops-cli `devops tf deploy-cloud -p <folder>` will do (dan-petty/devops-cli#6679). The provider
-reads the credentials from the environment of the consumer.
+variable. In an infra checkout, devops-cli `devops tf deploy-cloud -p <folder>` runs `tofu init` and
+`tofu apply` in the example with that file, or with the file of `--var-file`
+(dan-petty/devops-cli#6679). The provider reads the credentials from the environment of the
+consumer.
 
 The OpenTofu job of CI runs `trivy config` with the values of `<folder>.tfvars.example`,
 `tofu init -backend=false` and `tofu validate` in each example, and `tofu fmt -check` and tflint
