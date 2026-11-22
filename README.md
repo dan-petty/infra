@@ -31,9 +31,9 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 
 The README of each folder tells its content and the consumers of each template. Each folder that
 a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` gets its
-first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The first real
-template is the chart `charts/service-tenant` (dan-petty/infra#10). More templates come with later
-items, such as #7 and #8 (Ansible roles and plays), #9 (OpenTofu modules) and #11 to #19
+first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
+templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6) and the chart
+`charts/service-tenant` (dan-petty/infra#10). More templates come with later items, such as #7 and #8 (Ansible roles and plays), #9 (OpenTofu modules) and #11 to #19
 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release
