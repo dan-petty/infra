@@ -1,0 +1,79 @@
+---
+# The NVIDIA CUDA and Container Toolkit apt sources (DEB822), and the pin of a driver branch. A play
+# that updates the packages of a host can run these tasks alone (tasks_from: apt_sources).
+- name: Download the NVIDIA CUDA signing key
+  ansible.builtin.get_url:
+    url: "{{ nvidia_cuda_repo_gpg }}"
+    dest: /usr/share/keyrings/nvidia-cuda-keyring.asc
+    mode: "0644"
+
+- name: Remove the older NVIDIA CUDA source and pin files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/cuda-debian13-x86_64.list
+    - /etc/apt/sources.list.d/cuda-debian12.list
+    - /etc/apt/sources.list.d/cuda-debian12-x86_64.list
+    - /etc/apt/sources.list.d/cuda-debian12-x86_64.list.bak
+    - /etc/apt/sources.list.d/extrepo_nvidia-cuda.sources
+    - /etc/apt/sources.list.d/nvidia-cuda.list
+    - /etc/apt/preferences.d/nvidia-driver-pin.bak
+
+- name: Add the NVIDIA CUDA repository (DEB822)
+  ansible.builtin.deb822_repository:
+    name: cuda-debian13-x86_64
+    types: [deb]
+    uris: "{{ nvidia_cuda_repo_url }}"
+    suites: ["/"]
+    signed_by: /usr/share/keyrings/nvidia-cuda-keyring.asc
+    state: present
+
+# The legacy repository is the only source of the driver branches before Turing (for example 580 for
+# Pascal and Volta). Its signing key is bound with SHA-1, which the sqv verifier of apt refuses, so
+# the source is marked trusted (README.md, "Pin a driver branch").
+- name: Configure the NVIDIA CUDA legacy repository of a pinned driver branch (DEB822)
+  ansible.builtin.deb822_repository:
+    name: cuda-debian12-x86_64
+    types: [deb]
+    uris: "{{ nvidia_legacy_cuda_repo_url }}"
+    suites: ["/"]
+    trusted: true
+    state: "{{ 'present' if nvidia_driver_branch is defined else 'absent' }}"
+
+- name: Pin the NVIDIA driver packages to the driver branch
+  ansible.builtin.template:
+    src: nvidia-driver-pin.j2
+    dest: /etc/apt/preferences.d/nvidia-driver-pin
+    mode: "0644"
+  when: nvidia_driver_branch is defined
+
+- name: Remove the NVIDIA driver pin from a host on the current driver branch
+  ansible.builtin.file:
+    path: /etc/apt/preferences.d/nvidia-driver-pin
+    state: absent
+  when: nvidia_driver_branch is not defined
+
+- name: Download the NVIDIA Container Toolkit signing key
+  ansible.builtin.get_url:
+    url: "{{ nvidia_container_toolkit_repo_gpg }}"
+    dest: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    mode: "0644"
+
+- name: Remove the older NVIDIA Container Toolkit source list file
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    state: absent
+
+- name: Add the NVIDIA Container Toolkit repository (DEB822)
+  ansible.builtin.deb822_repository:
+    name: nvidia-container-toolkit
+    types: [deb]
+    uris: "{{ nvidia_container_toolkit_repo_url }}"
+    suites: ["/"]
+    signed_by: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    state: present
+
+- name: Update the apt package cache after the NVIDIA repositories
+  ansible.builtin.apt:
+    update_cache: true

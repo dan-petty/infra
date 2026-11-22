@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: dan-petty
+  description: Set the CPU power limits and the disabled CPU idle states of a host at each boot.
+  license: MIT
+  min_ansible_version: "2.20"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+dependencies: []

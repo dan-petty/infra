@@ -1,0 +1,33 @@
+#!/bin/bash
+# Managed by Ansible (roles/cpu_tuning). Sets the CPU power limits and the disabled idle states that
+# the host_vars of {{ inventory_hostname }} name, as a BIOS would. cpu-tuning.service runs it at
+# every boot. An idle state that the host_vars do not name is enabled again.
+set -euo pipefail
+{% if cpu_tuning_power_limits is defined %}
+
+# Power limits (PL1 with its time window, PL2) through the kernel powercap interface. It writes
+# MSR_PKG_POWER_LIMIT, so it works only while the BIOS leaves that register unlocked.
+modprobe intel_rapl_msr
+rapl=/sys/class/powercap/intel-rapl:0
+for _ in $(seq 1 20); do
+  [ -e "$rapl/constraint_1_power_limit_uw" ] && break
+  sleep 0.5
+done
+echo {{ (cpu_tuning_power_limits.pl1_w * 1000000) | int }} > "$rapl/constraint_0_power_limit_uw"
+echo {{ (cpu_tuning_power_limits.tau_s * 1000000) | int }} > "$rapl/constraint_0_time_window_us"
+echo {{ (cpu_tuning_power_limits.pl2_w * 1000000) | int }} > "$rapl/constraint_1_power_limit_uw"
+{% endif %}
+
+# Idle states, by name, so that a change of the state numbering does not disable the wrong state.
+disabled_cpus=" {{ (cpu_tuning_idle_states_disabled.cpus | default([])) | join(' ') }} "
+disabled_states=" {{ (cpu_tuning_idle_states_disabled.states | default([])) | join(' ') }} "
+for state in /sys/devices/system/cpu/cpu[0-9]*/cpuidle/state*; do
+  cpu=${state#/sys/devices/system/cpu/cpu}
+  cpu=${cpu%%/*}
+  name=$(cat "$state/name")
+  if [[ $disabled_cpus == *" $cpu "* && $disabled_states == *" $name "* ]]; then
+    echo 1 > "$state/disable"
+  else
+    echo 0 > "$state/disable"
+  fi
+done

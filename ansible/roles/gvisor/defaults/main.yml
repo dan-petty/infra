@@ -1,0 +1,34 @@
+---
+# The settings of the role gvisor that a play, group_vars or host_vars can replace
+# (meta/argument_specs.yml). The fixed values that the files of the role name are in vars/main.yml.
+
+# The pin. The gVisor apt suite "release" holds only the newest release, and a new release comes
+# each week. So the source uses the date suite of the release, and an apt preference holds runsc at
+# the exact version <date>.<point>. The suite is the date part of the version. The releases are at
+# https://github.com/google/gvisor/releases (tag release-<version>). A date suite holds only the
+# newest point release of its date: when gVisor publishes <date>.1, the suite drops <date>.0.
+gvisor_version: "20261109.0"
+gvisor_release: "{{ gvisor_version | split('.') | first }}"
+
+# The apt repository of gVisor.
+gvisor_repo_url: https://storage.googleapis.com/gvisor/releases
+
+# The node label that a RuntimeClass of the handler runsc selects. The role sets it last, after it
+# proves that containerd has the runtime runsc. The NodeRestriction admission plugin stops a kubelet
+# from setting a key under node-restriction.kubernetes.io/, so a node cannot label itself.
+gvisor_node_label: node-restriction.kubernetes.io/gvisor
+
+# The Kubernetes node name of the host. Set it when the node name is not the inventory name.
+gvisor_node_name: "{{ inventory_hostname }}"
+
+# The inventory group of the k3s servers, and the host that runs kubectl: the first host of that
+# group, or the host itself when the group has no host.
+gvisor_server_group: k3s_server
+gvisor_api_host: "{{ groups[gvisor_server_group] | default([inventory_hostname], true) | first }}"
+
+# A restart of the node service of a k3s server stops its API server and its datastore. The role
+# runs on a server only when a reviewed change sets this value to true.
+gvisor_allow_server: false
+
+# The k3s binary, which holds kubectl and crictl.
+gvisor_k3s_bin: /usr/local/bin/k3s

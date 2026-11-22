@@ -1,0 +1,54 @@
+---
+# Test of the role nvidia: the defaults give the packages and the repositories, and a play replaces
+# them. The import has `when: false`, so no task of the role runs, but the play still gets the
+# defaults of the role.
+- name: Check the defaults of the nvidia role
+  hosts: gpu_nodes
+  gather_facts: false
+  tasks:
+    - name: Import the nvidia role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.nvidia
+      when: false
+
+    - name: Show the default package lists
+      ansible.builtin.debug:
+        msg:
+          nvidia_driver_packages: "{{ nvidia_driver_packages }}"
+          nvidia_container_toolkit_packages: "{{ nvidia_container_toolkit_packages }}"
+
+    - name: Check the default packages and repositories
+      ansible.builtin.assert:
+        that:
+          - nvidia_driver_packages | length > 0
+          - nvidia_container_toolkit_packages | length > 0
+          - nvidia_cuda_repo_url is match('^https://')
+          - nvidia_cuda_repo_gpg is match('^https://')
+          - nvidia_legacy_cuda_repo_url is match('^https://')
+          - nvidia_container_toolkit_repo_url is match('^https://')
+          - nvidia_container_toolkit_repo_gpg is match('^https://')
+          - nvidia_ctk_path is match('^/')
+          - nvidia_driver_branch is not defined
+          - nvidia_gpu_power_limit is not defined
+        quiet: true
+
+- name: Check that a play replaces the defaults of the nvidia role
+  hosts: gpu_nodes
+  gather_facts: false
+  vars:
+    nvidia_driver_packages:
+      - nvidia-driver
+      - nvidia-kernel-dkms
+    nvidia_cuda_repo_url: https://mirror.example.com/cuda/
+  tasks:
+    - name: Import the nvidia role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.nvidia
+      when: false
+
+    - name: Check the values of the play
+      ansible.builtin.assert:
+        that:
+          - nvidia_driver_packages == ['nvidia-driver', 'nvidia-kernel-dkms']
+          - nvidia_cuda_repo_url == 'https://mirror.example.com/cuda/'
+        quiet: true

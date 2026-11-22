@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: dan-petty
+  description: Install the pinned gVisor runtime (runsc) on a Debian k3s node and label the node.
+  license: MIT
+  min_ansible_version: "2.20"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+dependencies: []

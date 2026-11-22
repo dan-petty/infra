@@ -1,0 +1,61 @@
+---
+# Test of the role cpu_tuning: the script of the role sets the power limits and the idle states of
+# the role variables, and the argument check of the role stops a power limit with no PL2. The
+# render tests read the template of the source tree and run no task on a host.
+- name: Check the script of the cpu_tuning role
+  hosts: gpu_nodes
+  gather_facts: false
+  vars:
+    cpu_tuning_template: "{{ playbook_dir }}/../roles/cpu_tuning/templates/cpu-tuning.sh.j2"
+  tasks:
+    - name: Check the script with power limits and disabled idle states
+      vars:
+        cpu_tuning_power_limits:
+          pl1_w: 65
+          pl2_w: 120.5
+          tau_s: 28
+        cpu_tuning_idle_states_disabled:
+          cpus: [3, 11]
+          states: [C6, C8]
+        cpu_tuning_script: "{{ lookup('ansible.builtin.template', cpu_tuning_template) }}"
+      ansible.builtin.assert:
+        that:
+          - "'modprobe intel_rapl_msr' in cpu_tuning_script"
+          - "'echo 65000000 > \"$rapl/constraint_0_power_limit_uw\"' in cpu_tuning_script"
+          - "'echo 28000000 > \"$rapl/constraint_0_time_window_us\"' in cpu_tuning_script"
+          - "'echo 120500000 > \"$rapl/constraint_1_power_limit_uw\"' in cpu_tuning_script"
+          - "'disabled_cpus=\" 3 11 \"' in cpu_tuning_script"
+          - "'disabled_states=\" C6 C8 \"' in cpu_tuning_script"
+        quiet: true
+
+    - name: Check the script with no setting
+      vars:
+        cpu_tuning_script: "{{ lookup('ansible.builtin.template', cpu_tuning_template) }}"
+      ansible.builtin.assert:
+        that:
+          - "'intel_rapl_msr' not in cpu_tuning_script"
+          - "'disabled_cpus=\"  \"' in cpu_tuning_script"
+          - "'disabled_states=\"  \"' in cpu_tuning_script"
+        quiet: true
+
+- name: Check that the cpu_tuning role refuses a power limit with no PL2
+  hosts: gpu_nodes
+  gather_facts: false
+  vars:
+    cpu_tuning_power_limits:
+      pl1_w: 65
+      tau_s: 28
+  tasks:
+    - name: Run the cpu_tuning role with no PL2
+      block:
+        - name: Run the cpu_tuning role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.cpu_tuning
+      rescue:
+        - name: Check that the argument check named PL2
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'pl2_w' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true

@@ -1,0 +1,17 @@
+---
+# Install the pinned gVisor runtime (runsc) on each host of target_hosts, one host at a time, and
+# label the node (role gvisor, roles/gvisor/README.md). The play has no default host:
+# ansible-playbook dan_petty.infra.gvisor -e target_hosts=<group>. It does not reboot. It is safe to
+# run twice: the second run changes nothing. A failure on one host stops the play for each host.
+- name: Install the gVisor runtime (runsc) and label the node
+  hosts: "{{ target_hosts }}"
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  gather_facts: true
+  gather_subset:
+    - "!all"
+    - "!min"
+    - platform
+  roles:
+    - role: dan_petty.infra.gvisor

@@ -1,0 +1,22 @@
+# Managed by Ansible: holds NVIDIA driver packages on the {{ nvidia_driver_branch }} branch
+
+# Basic driver packages, includes foreign architectures
+Package: src:nvidia-graphics-drivers:any src:nvidia-kmod-open:any
+Pin: version {{ nvidia_driver_branch }}*
+Pin-Priority: 1000
+
+# Basic driver packages, only in the native architectures
+Package: src:nvidia-modprobe src:nvidia-persistenced src:nvidia-settings src:nvidia-xconfig
+Pin: version {{ nvidia_driver_branch }}*
+Pin-Priority: 1000
+
+# Meta packages, includes foreign architectures
+# cuda-compat, built from cuda-drivers must not be part of the pinning
+Package: cuda-drivers* src:nvidia-open:any
+Pin: version {{ nvidia_driver_branch }}*
+Pin-Priority: 1000
+
+# Extra driver packages, only in the native architectures
+Package: src:libnvidia-nscq src:libnvsdm src:nvidia-fabricmanager src:nvidia-imex src:nvlink5 src:fabricmanager src:imex
+Pin: version {{ nvidia_driver_branch }}*
+Pin-Priority: 1000

@@ -1,0 +1,16 @@
+{{ template "base" . }}
+# Managed by Ansible (roles/gvisor): the gVisor runtime of the RuntimeClass gvisor of devops-cli.
+# k3s renders this Go template to config.toml when the node service starts. The base template above
+# keeps the k3s defaults (runc, the NVIDIA runtimes, the registries). The role copies this file as
+# it is, so Ansible does not read the braces. Do not edit it on the node: the role writes it again.
+# If a later k3s finds runsc by itself, the base template already holds the table of runsc, and a
+# second table would stop containerd. So the tables below come only when k3s did not find runsc
+# (.ExtraRuntimes, map[string]ContainerdRuntimeConfig). The play then stops before the label,
+# because the entry of k3s has no ConfigPath.
+{{- if not (index .ExtraRuntimes "runsc").RuntimeType }}
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runsc]
+  runtime_type = "io.containerd.runsc.v1"
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runsc.options]
+  TypeUrl = "io.containerd.runsc.v1.options"
+  ConfigPath = "/etc/rancher/k3s/runsc.toml"
+{{- end }}

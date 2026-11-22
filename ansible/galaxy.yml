@@ -16,3 +16,4 @@ build_ignore:
   - '*.tar.gz'
   - .ansible
   - .ansible-lint
+  - tests

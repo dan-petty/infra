@@ -1,0 +1,67 @@
+---
+argument_specs:
+  main:
+    short_description: Install the pinned gVisor runtime (runsc) on a Debian k3s node and label the node.
+    description:
+      - Add the gVisor apt source of the pin, hold runsc at gvisor_version and install it.
+      - Write the runsc options and the containerd template of k3s that adds the runtime runsc, and
+        restart the node service when the template changes.
+      - Check that containerd and the kubelet list the runtime runsc, then set gvisor_node_label on
+        the node.
+      - The play gathers the platform facts (ansible_facts.architecture).
+    options:
+      devops_infra_node_service:
+        type: str
+        required: true
+        description:
+          - The systemd unit that runs the Kubernetes node, k3s on a server and k3s-agent on an
+            agent. The inventory sets it for each host.
+      gvisor_node_role:
+        type: str
+        required: true
+        choices:
+          - agent
+          - server
+        description:
+          - The k3s role of the host. The role runs on a server only when gvisor_allow_server is
+            true.
+      gvisor_allow_server:
+        type: bool
+        default: false
+        description:
+          - Let the role run on a k3s server. A restart of the node service of a server stops its
+            API server and its datastore.
+      gvisor_version:
+        type: str
+        default: "20261109.0"
+        description: The exact runsc version, <date>.<point>, that an apt preference holds.
+      gvisor_release:
+        type: str
+        default: "{{ gvisor_version | split('.') | first }}"
+        description: The date suite of the gVisor apt repository. The default is the date part of gvisor_version.
+      gvisor_repo_url:
+        type: str
+        default: https://storage.googleapis.com/gvisor/releases
+        description: The apt repository of gVisor.
+      gvisor_node_label:
+        type: str
+        default: node-restriction.kubernetes.io/gvisor
+        description: The node label, with the value true, that a RuntimeClass of the handler runsc selects.
+      gvisor_node_name:
+        type: str
+        default: "{{ inventory_hostname }}"
+        description: The Kubernetes node name of the host.
+      gvisor_server_group:
+        type: str
+        default: k3s_server
+        description: The inventory group of the k3s servers.
+      gvisor_api_host:
+        type: str
+        default: "{{ groups[gvisor_server_group] | default([inventory_hostname], true) | first }}"
+        description:
+          - The host that runs kubectl for the node checks and the label. The default is the first
+            host of gvisor_server_group, or the host itself when the group has no host.
+      gvisor_k3s_bin:
+        type: str
+        default: /usr/local/bin/k3s
+        description: The k3s binary, which holds kubectl and crictl.

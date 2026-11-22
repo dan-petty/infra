@@ -22,7 +22,7 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `k8s/tests/` | The test overlay of each base and component. |
 | `charts/` | The Helm charts that infra writes, with their test values and unit tests. |
 | `helm/` | The values templates of upstream Helm charts, each with a test chart that pins the upstream chart. |
-| `ansible/` | The Ansible collection `dan_petty.infra`: `galaxy.yml`, `roles/` and `playbooks/`. |
+| `ansible/` | The Ansible collection `dan_petty.infra`: `galaxy.yml`, `roles/`, `playbooks/` and its `tests/`. |
 | `tf/modules/` | OpenTofu modules. |
 | `tf/examples/` | An example for each OpenTofu module. |
 | `renovate/` | Renovate presets that other repositories extend. |
@@ -32,9 +32,11 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 The README of each folder tells its content and the consumers of each template. Each folder that
 a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` gets its
 first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
-templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6) and the chart
-`charts/service-tenant` (dan-petty/infra#10). More templates come with later items, such as #7 and #8 (Ansible roles and plays), #9 (OpenTofu modules) and #11 to #19
-(Kubernetes bases and components, and Helm values templates).
+templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
+`charts/service-tenant` (dan-petty/infra#10) and the Ansible roles `nvidia`, `gvisor` and
+`cpu_tuning` (dan-petty/infra#7). More templates come with later items, such as #8 (the Ansible
+role common and plays), #9 (OpenTofu modules) and #11 to #19 (Kubernetes bases and components, and
+Helm values templates).
 
 ## Pin a release
 
@@ -157,7 +159,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | K8s | `KUSTOMIZE_ROOTS=k8s/tests/example HELM_CHARTS=$'charts/example\ncharts/service-tenant' PROMTOOL_RULES=k8s/components/example/rules/example.rules.yaml mise exec -- scripts/k8s-validate.sh all` |
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and `tofu init -backend=false` and `tofu validate` in each folder of `tf/examples/` |
-| Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/` |
+| Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
 | YAML | `.venv/bin/yamllint --strict .` |
 | actionlint | `mise exec -- actionlint` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |

@@ -1,0 +1,12 @@
+---
+# Set the CPU power limits and the disabled idle states of each host of target_hosts that sets
+# cpu_tuning_power_limits or cpu_tuning_idle_states_disabled (role cpu_tuning,
+# roles/cpu_tuning/README.md). A host with neither variable stays as it is. The play has no default
+# host: ansible-playbook dan_petty.infra.cpu_tuning -e target_hosts=<group>. It does not reboot.
+- name: Set the CPU power limits and idle states of each host
+  hosts: "{{ target_hosts }}"
+  become: true
+  gather_facts: false
+  roles:
+    - role: dan_petty.infra.cpu_tuning
+      when: cpu_tuning_power_limits is defined or cpu_tuning_idle_states_disabled is defined

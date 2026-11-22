@@ -1,0 +1,27 @@
+---
+# The fixed values of the role gvisor. The files of the role name the same paths and the same key,
+# so a play does not replace them. The settings that a play can replace are in defaults/main.yml.
+
+# The signing key of the gVisor apt repository, "The gVisor Authors", RSA 4096, no expiry. The role
+# writes files/gvisor-archive-key.asc into the source and never downloads a key. The role checks the
+# key file against files/gvisor-archive-key.asc.sha256, the output of sha256sum. To check a new key
+# from https://gvisor.dev/archive.key: gpg --show-keys --with-fingerprint <file>. Then, in files/,
+# write sha256sum gvisor-archive-key.asc > gvisor-archive-key.asc.sha256. A key change comes only
+# through a pull request that changes the two files and the fingerprint.
+gvisor_key_fingerprint: 6F1D F85E 3A71 C249 18E7 27D5 6FC6 D554 E32B D943
+
+# The runsc options that the shim reads when it starts each sandbox. files/config-v3.toml.tmpl
+# names this path (ConfigPath). It is not the conffile /etc/containerd/runsc.toml of the package,
+# so dpkg never asks about it.
+gvisor_runsc_config: /etc/rancher/k3s/runsc.toml
+
+# The containerd 2.x config template of k3s. The role owns the whole file.
+gvisor_template_path: /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl
+
+# The legacy (containerd 1.x) template. k3s renders it only when config-v3.toml.tmpl is missing,
+# so the role stops when it exists.
+gvisor_legacy_template_path: /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+
+# The first line after the base template in files/config-v3.toml.tmpl. The role stops when a
+# template exists without it, so it never writes over a template that a person made.
+gvisor_template_marker: "# Managed by Ansible (roles/gvisor)"

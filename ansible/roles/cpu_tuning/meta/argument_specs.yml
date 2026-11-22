@@ -1,0 +1,43 @@
+---
+argument_specs:
+  main:
+    short_description: Set the CPU power limits and the disabled CPU idle states of a host at each boot.
+    description:
+      - Install /usr/local/sbin/cpu-tuning and cpu-tuning.service, which run at each boot, and run
+        them now.
+      - The power limits go through the powercap interface intel-rapl, so they work only while the
+        BIOS leaves MSR_PKG_POWER_LIMIT unlocked.
+      - Each idle state that cpu_tuning_idle_states_disabled does not name is enabled again. With
+        neither variable, the script sets no power limit and enables each idle state. The play
+        cpu_tuning runs the role only on a host that sets one of the two variables.
+    options:
+      cpu_tuning_power_limits:
+        type: dict
+        description: The package power limits. Not set means the script does not change them.
+        options:
+          pl1_w:
+            type: float
+            required: true
+            description: The long-term package power limit PL1, in watts.
+          pl2_w:
+            type: float
+            required: true
+            description: The short-term package power limit PL2, in watts.
+          tau_s:
+            type: float
+            required: true
+            description: The time window of PL1, in seconds.
+      cpu_tuning_idle_states_disabled:
+        type: dict
+        description: The idle states that the listed CPUs do not use. The CPUs stay on.
+        options:
+          cpus:
+            type: list
+            elements: int
+            default: []
+            description: The numbers of the CPUs, as in /sys/devices/system/cpu/cpu<number>.
+          states:
+            type: list
+            elements: str
+            default: []
+            description: The names of the idle states, as in /sys/devices/system/cpu/cpu*/cpuidle/state*/name.

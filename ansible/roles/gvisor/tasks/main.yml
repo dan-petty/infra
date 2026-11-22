@@ -1,0 +1,345 @@
+---
+# Install the pinned gVisor runtime (runsc), add it to the containerd config of k3s and label the
+# node. Each read also runs in check mode (check_mode: false, changed_when: false).
+#
+# Check mode cannot run a task that needs the change of an earlier task while that change is still
+# to come: apt cannot find a package in a source that it has not added, and containerd lists runsc
+# only after the restart. Such a task has a `when` that names ansible_check_mode, so a check-mode
+# plan shows it as skipped. A `when` list puts the condition of the work first: a skip with nothing
+# to do then does not name check mode.
+
+# Step 1: the preconditions. runsc and the containerd shim of the package are amd64 builds, and the
+# runtime needs cgroup v2. A restart of the node service of a k3s server stops its API server and
+# its datastore, so the role runs on an agent only, unless a reviewed change sets
+# gvisor_allow_server.
+- name: Read the cgroup v2 controllers file
+  ansible.builtin.stat:
+    path: /sys/fs/cgroup/cgroup.controllers
+  register: gvisor_cgroup2
+  changed_when: false
+  check_mode: false
+
+- name: Check the node role, the architecture and cgroup v2
+  ansible.builtin.assert:
+    that:
+      - gvisor_node_role == 'agent' or gvisor_allow_server | bool
+      - ansible_facts.architecture == 'x86_64'
+      - gvisor_cgroup2.stat.exists
+    fail_msg: >-
+      {{ inventory_hostname }} cannot run runsc: it needs a k3s agent (a server only with
+      gvisor_allow_server), amd64 and cgroup v2. Node role: {{ gvisor_node_role }}, node service:
+      {{ devops_infra_node_service }}, architecture: {{ ansible_facts.architecture }}, cgroup v2:
+      {{ gvisor_cgroup2.stat.exists }}.
+    quiet: true
+
+# The key file of the role is the key that a person checked (vars/main.yml).
+- name: Check the gVisor signing key of the role
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.file', 'gvisor-archive-key.asc', rstrip=false) | hash('sha256') == gvisor_key_checksum
+    fail_msg: >-
+      files/gvisor-archive-key.asc is not the key of files/gvisor-archive-key.asc.sha256
+      (SHA-256 {{ gvisor_key_checksum }}, fingerprint {{ gvisor_key_fingerprint }}). Check a new key
+      as vars/main.yml tells.
+    quiet: true
+  vars:
+    gvisor_key_checksum: "{{ lookup('ansible.builtin.file', 'gvisor-archive-key.asc.sha256') | split | first }}"
+
+# Step 2: the role owns the whole containerd template. It stops when a template exists without the
+# marker line, so it never writes over a template that a person or another role made. k3s renders
+# the legacy template config.toml.tmpl only when config-v3.toml.tmpl is missing, so the new file
+# would replace a legacy template with no message. The role also stops when a legacy template exists.
+- name: Read the state of the containerd templates of k3s
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ gvisor_template_path }}"
+    - "{{ gvisor_legacy_template_path }}"
+  register: gvisor_template_stats
+  changed_when: false
+  check_mode: false
+
+- name: Stop when a legacy containerd template exists
+  ansible.builtin.assert:
+    that:
+      - not gvisor_template_stats.results[1].stat.exists
+    fail_msg: >-
+      {{ gvisor_legacy_template_path }} exists. k3s stops reading it when the role writes
+      {{ gvisor_template_path }}, so its settings would go with no message. Merge them into
+      files/config-v3.toml.tmpl of the role gvisor or remove the file, then run the play again. The
+      play changed nothing.
+    quiet: true
+
+- name: Read the containerd template of k3s
+  ansible.builtin.slurp:
+    src: "{{ gvisor_template_path }}"
+  register: gvisor_template_read
+  changed_when: false
+  check_mode: false
+  when: gvisor_template_stats.results[0].stat.exists
+
+- name: Stop when the containerd template is not the template of this role
+  ansible.builtin.assert:
+    that:
+      - gvisor_template_marker in (gvisor_template_read.content | b64decode)
+    fail_msg: >-
+      {{ gvisor_template_path }} exists without the line "{{ gvisor_template_marker }}". Another tool or
+      a person wrote it. Merge its content into files/config-v3.toml.tmpl of the role gvisor, remove
+      the file and run the play again. The play changed nothing.
+    quiet: true
+  when: gvisor_template_stats.results[0].stat.exists
+
+# Step 3: the apt source of the pinned release. The key is in the source (Signed-By), so apt trusts
+# it for this source only. The date suite holds only the newest point release of its date.
+- name: Add the gVisor apt source (DEB822, the date suite of the pin)
+  ansible.builtin.deb822_repository:
+    name: gvisor
+    types: [deb]
+    uris: "{{ gvisor_repo_url }}"
+    suites: ["{{ gvisor_release }}"]
+    components: [main]
+    architectures: [amd64]
+    signed_by: "{{ lookup('ansible.builtin.file', 'gvisor-archive-key.asc') }}"
+    state: present
+  register: gvisor_repo
+
+# A dist-upgrade of the host does not move runsc: the pin holds it at gvisor_version.
+- name: Pin runsc to the version of the pin
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/gvisor-runsc-pin
+    mode: "0644"
+    content: |
+      # Managed by Ansible (roles/gvisor): holds runsc at the pinned release. Change gvisor_version.
+      Package: runsc
+      Pin: version {{ gvisor_version }}
+      Pin-Priority: 1001
+
+# In check mode, apt cannot find a package in a source that it has not added yet, so the plan shows
+# the install as skipped when the source changes. A new source makes apt read the package lists
+# again at once.
+- name: Install runsc at the pinned version
+  ansible.builtin.apt:
+    name: "runsc={{ gvisor_version }}"
+    state: present
+    allow_downgrade: true
+    update_cache: true
+    cache_valid_time: "{{ 0 if gvisor_repo is changed else 3600 }}"
+  register: gvisor_package
+  when: not (ansible_check_mode and gvisor_repo is changed)
+
+# The package installs /usr/bin/runsc, /usr/bin/containerd-shim-runsc-v1 and /usr/bin/gvisor-bin/*.
+- name: Read the runsc version
+  ansible.builtin.command:
+    cmd: /usr/bin/runsc --version
+  register: gvisor_runsc_version
+  changed_when: false
+  check_mode: false
+  when: not (ansible_check_mode and (gvisor_repo is changed or gvisor_package is changed))
+
+- name: Check that runsc is the pinned release
+  ansible.builtin.assert:
+    that:
+      - ("release-" ~ gvisor_version) in gvisor_runsc_version.stdout
+    fail_msg: "runsc is not release-{{ gvisor_version }}: {{ gvisor_runsc_version.stdout_lines | first | default('') }}"
+    quiet: true
+  when: gvisor_runsc_version is not skipped
+
+# Step 4: the runsc options. The shim reads runsc.toml when it starts each sandbox, so a change of
+# runsc.toml needs no restart.
+- name: Write the runsc options
+  ansible.builtin.copy:
+    src: runsc.toml
+    dest: "{{ gvisor_runsc_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# The restart is due when the template changes, and also when containerd does not list runsc with
+# the options of the role: an earlier run can stop after it wrote the template and before the
+# restart took effect. A failed read means the same.
+- name: Read the CRI config of containerd before the restart decision
+  ansible.builtin.command:
+    cmd: "{{ gvisor_k3s_bin }} crictl info"
+  register: gvisor_crictl_before
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# Step 5: the template, the restart and the checks. When a step fails after this run changed the
+# template, the rescue puts back the template of before and restarts the node service, so the node
+# does not stay NotReady with a bad template. The rescue then fails the run, so the label task
+# never runs after it.
+- name: Add the runtime runsc to the containerd config of k3s
+  block:
+    # The template is a Go template that k3s renders. A copy, not a template task, so that Ansible
+    # does not read its braces.
+    - name: Write the containerd template that adds the runtime runsc
+      ansible.builtin.copy:
+        src: config-v3.toml.tmpl
+        dest: "{{ gvisor_template_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: gvisor_template
+
+    # k3s renders the template only when the node service starts. A task, not a handler, so the
+    # order is clear: restart, wait, check, then label. KillMode=process of the unit keeps the
+    # running containers alive through the restart.
+    - name: Restart the node service so that k3s writes the containerd config again
+      ansible.builtin.systemd:
+        name: "{{ devops_infra_node_service }}"
+        state: restarted
+      register: gvisor_restart
+      when: gvisor_template is changed or not gvisor_cri_before_ok
+      vars:
+        gvisor_cri_before: >-
+          {{ (gvisor_crictl_before.stdout | from_json).config.containerd.runtimes.runsc | default({})
+          if gvisor_crictl_before.rc == 0 else {} }}
+        gvisor_cri_before_ok: >-
+          {{ gvisor_cri_before.runtimeType | default('') == 'io.containerd.runsc.v1'
+          and (gvisor_cri_before.options | default({})).ConfigPath | default('') == gvisor_runsc_config }}
+
+    - name: Wait for the node service to become active
+      ansible.builtin.service_facts:
+      register: gvisor_service
+      until: >-
+        (gvisor_service.ansible_facts.services[devops_infra_node_service ~ '.service'] | default({})).state
+        | default('') == 'running'
+      retries: 30
+      delay: 5
+      check_mode: false
+
+    - name: Wait for the node to report Ready in Kubernetes
+      ansible.builtin.command:
+        cmd: >-
+          {{ gvisor_k3s_bin }} kubectl get node {{ gvisor_node_name }}
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      delegate_to: "{{ gvisor_api_host }}"
+      register: gvisor_node_ready
+      until: gvisor_node_ready.stdout == 'True'
+      retries: 60
+      delay: 5
+      changed_when: false
+      check_mode: false
+
+    # containerd must list the runtime runsc before any pod of the RuntimeClass can come to the
+    # node. The retries cover the start of containerd after the restart.
+    - name: Read the CRI config of containerd
+      ansible.builtin.command:
+        cmd: "{{ gvisor_k3s_bin }} crictl info"
+      register: gvisor_crictl
+      until: gvisor_crictl.rc == 0
+      retries: 30
+      delay: 5
+      changed_when: false
+      check_mode: false
+      when: not (ansible_check_mode and gvisor_restart is changed)
+
+    # The same JSON path gives io.containerd.runc.v2 for the runtime runc of k3s. When it does not,
+    # the path is wrong, not the runtime runsc.
+    - name: Check the path of the runtimes in the CRI config
+      ansible.builtin.assert:
+        that:
+          - >-
+            (gvisor_crictl.stdout | from_json).config.containerd.runtimes.runc.runtimeType | default('')
+            == 'io.containerd.runc.v2'
+        fail_msg: >-
+          The crictl info path config.containerd.runtimes.<name>.runtimeType does not give
+          io.containerd.runc.v2 for runc on {{ inventory_hostname }}. The path in the role gvisor is
+          wrong for this containerd. Read: sudo k3s crictl info | jq '.config.containerd.runtimes | keys'.
+        quiet: true
+      when: gvisor_crictl is not skipped
+
+    - name: Check that containerd has the runtime runsc with the options of the role
+      ansible.builtin.assert:
+        that:
+          - gvisor_cri_runsc.runtimeType | default('') == 'io.containerd.runsc.v1'
+          - (gvisor_cri_runsc.options | default({})).ConfigPath | default('') == gvisor_runsc_config
+        fail_msg: >-
+          containerd on {{ inventory_hostname }} does not list the runtime runsc with ConfigPath
+          {{ gvisor_runsc_config }} (got {{ gvisor_cri_runsc | to_json }}). If a later k3s finds
+          runsc by itself, its entry takes the place of the entry of the role. Read: sudo k3s
+          crictl info, and /var/lib/rancher/k3s/agent/etc/containerd/config.toml. The node has no
+          new label, so no new pod of the RuntimeClass comes to it.
+        quiet: true
+      vars:
+        gvisor_cri_runsc: "{{ (gvisor_crictl.stdout | from_json).config.containerd.runtimes.runsc | default({}) }}"
+      when: gvisor_crictl is not skipped
+
+    # The kubelet view: the node status lists the runtime handlers that the kubelet read from the
+    # CRI when it started.
+    - name: Wait for the kubelet to list the runtime handler runsc
+      ansible.builtin.command:
+        cmd: >-
+          {{ gvisor_k3s_bin }} kubectl get node {{ gvisor_node_name }}
+          -o jsonpath='{.status.runtimeHandlers[*].name}'
+      delegate_to: "{{ gvisor_api_host }}"
+      register: gvisor_handlers
+      until: "'runsc' in gvisor_handlers.stdout.split()"
+      retries: 24
+      delay: 5
+      changed_when: false
+      check_mode: false
+      when: not (ansible_check_mode and gvisor_restart is changed)
+
+  rescue:
+    # Put back the containerd template of before. A task changes the file only when this run changed
+    # the template, and only a change of the file restarts the node service.
+    - name: Put back the containerd template of before
+      ansible.builtin.copy:
+        content: "{{ gvisor_template_read.content | b64decode }}"
+        dest: "{{ gvisor_template_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: gvisor_rollback_put_back
+      when: gvisor_template_stats.results[0].stat.exists
+
+    - name: Remove the containerd template that this run added
+      ansible.builtin.file:
+        path: "{{ gvisor_template_path }}"
+        state: absent
+      register: gvisor_rollback_remove
+      when: not gvisor_template_stats.results[0].stat.exists
+
+    - name: Restart the node service with the containerd config of before
+      ansible.builtin.systemd:
+        name: "{{ devops_infra_node_service }}"
+        state: restarted
+      when: gvisor_rollback_put_back is changed or gvisor_rollback_remove is changed
+
+    - name: Wait for the node service and containerd after the rollback
+      ansible.builtin.command:
+        cmd: "{{ gvisor_k3s_bin }} crictl info"
+      register: gvisor_crictl_rollback
+      until: gvisor_crictl_rollback.rc == 0
+      retries: 30
+      delay: 5
+      changed_when: false
+      check_mode: false
+      when: gvisor_rollback_put_back is changed or gvisor_rollback_remove is changed
+
+    - name: Stop the run with the first error
+      ansible.builtin.fail:
+        msg: >-
+          {{ ansible_failed_task.name | default('A task') }} failed on {{ inventory_hostname }}:
+          {{ ansible_failed_result.msg | default('no message') }}.
+          {{ 'The play put back the containerd template of before and restarted ' ~ devops_infra_node_service ~ '.'
+          if gvisor_rollback_put_back is changed or gvisor_rollback_remove is changed
+          else 'The play did not change the containerd template.' }}
+          The node has no new label.
+
+# Step 6: the label comes last, so a pod of the RuntimeClass never comes to a node where runsc does
+# not work. k3s applies --node-label only when the node joins, so kubectl sets it. The key is under
+# node-restriction.kubernetes.io/: the NodeRestriction admission plugin of k3s stops a kubelet from
+# setting it on its own node, so only an admin sets it. In check mode, the API server only checks
+# the change (server dry run).
+- name: Label the node for the RuntimeClass of the handler runsc
+  ansible.builtin.command:
+    cmd: >-
+      {{ gvisor_k3s_bin }} kubectl label node {{ gvisor_node_name }} {{ gvisor_node_label }}=true --overwrite
+      {{ '--dry-run=server' if ansible_check_mode else '' }}
+  delegate_to: "{{ gvisor_api_host }}"
+  register: gvisor_label
+  changed_when: "'not labeled' not in gvisor_label.stdout"
+  check_mode: false

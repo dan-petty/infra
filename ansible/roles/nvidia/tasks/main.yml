@@ -1,0 +1,137 @@
+---
+# Install the NVIDIA driver and the NVIDIA Container Toolkit on a Debian k3s node. Each read also
+# runs in check mode (check_mode: false, changed_when: false), so a check-mode plan sees the state.
+- name: Read the PCI devices
+  ansible.builtin.command:
+    cmd: lspci
+  register: nvidia_pci_devices
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Show the NVIDIA display devices
+  ansible.builtin.debug:
+    msg: >-
+      NVIDIA PCI devices detected:
+      {{ nvidia_pci_devices.stdout_lines | default([]) | select('search', 'vga|3d|display', ignorecase=true)
+      | select('search', 'nvidia', ignorecase=true) | join('; ') }}
+
+- name: Configure the NVIDIA apt sources and the pin of the driver branch
+  ansible.builtin.import_tasks: apt_sources.yml
+
+- name: Install the Linux kernel headers for the DKMS module build
+  ansible.builtin.apt:
+    name:
+      - "linux-headers-{{ ansible_facts['kernel'] }}"
+      - linux-headers-amd64
+    state: present
+  failed_when: false
+
+- name: Install the NVIDIA driver packages
+  ansible.builtin.apt:
+    name: "{{ nvidia_driver_packages }}"
+    state: present
+    update_cache: true
+
+# k3s finds the NVIDIA runtime only when its node service starts, and then writes it to its own
+# containerd config. It does not read /etc/containerd/config.toml. This task reports a change only
+# when it installs a package, so only a new install restarts k3s.
+- name: Install the NVIDIA Container Toolkit
+  ansible.builtin.apt:
+    name: "{{ nvidia_container_toolkit_packages }}"
+    state: present
+  notify: Restart the k3s node service
+
+- name: Ensure that the CDI directory exists
+  ansible.builtin.file:
+    path: /etc/cdi
+    state: directory
+    mode: "0755"
+
+- name: Read the loaded kernel modules
+  ansible.builtin.command:
+    cmd: lsmod
+  register: nvidia_kernel_modules
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Check if nvidia-smi works before the reboot decision
+  ansible.builtin.command:
+    cmd: nvidia-smi
+  register: nvidia_smi_pre_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Reboot the node to switch from nouveau to the NVIDIA driver
+  ansible.builtin.reboot:
+    msg: Rebooting to switch from nouveau to the NVIDIA proprietary driver
+    reboot_timeout: 300
+  when:
+    - "'nouveau' in (nvidia_kernel_modules.stdout | default('') | lower)"
+    - nvidia_smi_pre_check.rc != 0
+
+- name: Generate the CDI specification of the NVIDIA GPU devices
+  ansible.builtin.command:
+    cmd: "{{ nvidia_ctk_path }} cdi generate --output=/etc/cdi/nvidia.yaml"
+  register: nvidia_cdi_generate
+  changed_when: nvidia_cdi_generate.rc == 0
+  failed_when: false
+
+- name: Ensure that nvidia-persistenced is active and enabled
+  ansible.builtin.systemd:
+    name: nvidia-persistenced
+    state: started
+    enabled: true
+  failed_when: false
+
+- name: Check if nvidia-smi works
+  ansible.builtin.command:
+    cmd: nvidia-smi
+  register: nvidia_smi_out
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Configure the persistent GPU power limit service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/nvidia-power-limit.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Set NVIDIA GPU Power Limits
+      After=syslog.target nvidia-persistenced.service
+      ConditionPathExists=/usr/bin/nvidia-smi
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/bin/nvidia-smi -pm 1
+      ExecStart=/usr/bin/nvidia-smi -pl {{ nvidia_gpu_power_limit }}
+
+      [Install]
+      WantedBy=multi-user.target
+  when: nvidia_gpu_power_limit is defined
+  register: nvidia_power_limit_service
+
+# A card that rejects the limit fails the oneshot unit, so this task fails and the GPU does not stay
+# uncapped without notice. Set nvidia_gpu_power_limit to a value in the range of the card
+# (nvidia-smi -q -d POWER shows the range). In check mode a new unit file is not written, so systemd
+# cannot find the unit yet.
+- name: Enable and apply the GPU power limit service
+  ansible.builtin.systemd:
+    name: nvidia-power-limit
+    enabled: true
+    daemon_reload: "{{ nvidia_power_limit_service is changed }}"
+    state: "{{ 'restarted' if nvidia_power_limit_service is changed else 'started' }}"
+  when:
+    - nvidia_gpu_power_limit is defined
+    - nvidia_smi_out.rc == 0
+    - not (ansible_check_mode and nvidia_power_limit_service is changed)
+
+- name: Show the NVIDIA driver and CUDA version
+  ansible.builtin.debug:
+    msg: >-
+      {{ nvidia_smi_out.stdout_lines[:10] if nvidia_smi_out.rc == 0
+      else 'nvidia-smi does not work yet (the kernel module can need a reboot)' }}

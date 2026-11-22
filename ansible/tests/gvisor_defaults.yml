@@ -1,0 +1,67 @@
+---
+# Test of the role gvisor: the defaults give the node name, the API host and the apt suite, and a
+# play replaces each of them. No default removes or adds a domain suffix. The import has
+# `when: false`, so no task of the role runs, but the play still gets the defaults of the role.
+- name: Check the defaults of the gvisor role
+  hosts: gvisor_nodes
+  gather_facts: false
+  tasks:
+    - name: Import the gvisor role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.gvisor
+      when: false
+
+    - name: Show the node name and the API host
+      ansible.builtin.debug:
+        msg:
+          gvisor_node_name: "{{ gvisor_node_name }}"
+          gvisor_api_host: "{{ gvisor_api_host }}"
+          gvisor_release: "{{ gvisor_release }}"
+
+    - name: Check the defaults
+      ansible.builtin.assert:
+        that:
+          - gvisor_node_name == 'agent-1.example.com'
+          - gvisor_api_host == 'server-1.example.com'
+          - gvisor_release ~ '.' in gvisor_version
+          - gvisor_node_label | length > 0
+          - not gvisor_allow_server
+        quiet: true
+
+- name: Check that a play replaces the defaults of the gvisor role
+  hosts: gvisor_nodes
+  gather_facts: false
+  vars:
+    gvisor_node_name: test-node
+    gvisor_api_host: server-2.example.com
+    gvisor_version: "20990101.2"
+  tasks:
+    - name: Import the gvisor role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.gvisor
+      when: false
+
+    - name: Check the values of the play and the apt suite of the version
+      ansible.builtin.assert:
+        that:
+          - gvisor_node_name == 'test-node'
+          - gvisor_api_host == 'server-2.example.com'
+          - gvisor_release == '20990101'
+        quiet: true
+
+- name: Check the API host when the server group has no host
+  hosts: gvisor_nodes
+  gather_facts: false
+  vars:
+    gvisor_server_group: no_such_group
+  tasks:
+    - name: Import the gvisor role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.gvisor
+      when: false
+
+    - name: Check that the API host is the host itself
+      ansible.builtin.assert:
+        that:
+          - gvisor_api_host == inventory_hostname
+        quiet: true
