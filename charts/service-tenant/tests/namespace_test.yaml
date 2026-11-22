@@ -1,0 +1,63 @@
+suite: Namespaces of the service
+templates:
+  - templates/namespace.yaml
+values:
+  - ../ci/test-values.yaml
+tests:
+  - it: renders one Namespace for each namespace of the entry
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Namespace
+      - equal:
+          path: metadata.name
+          value: example
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: example-db
+        documentIndex: 1
+  - it: keeps each Namespace when Argo CD prunes or deletes the Application
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-options"]
+          value: Prune=false,Delete=false
+  - it: opens each namespace to the monitoring scrape
+    asserts:
+      - equal:
+          path: metadata.labels["monitoring-scrape"]
+          value: "true"
+  - it: enforces restricted when the entry sets no podSecurity
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/enforce"]
+          value: restricted
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/warn"]
+          value: restricted
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/audit"]
+          value: restricted
+  - it: keeps warn and audit restricted when enforce is baseline
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/enforce"]
+          value: baseline
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/warn"]
+          value: restricted
+      - equal:
+          path: metadata.labels["pod-security.kubernetes.io/audit"]
+          value: restricted
+  - it: gives the label backup-client only to a namespace with backup true
+    asserts:
+      - notExists:
+          path: metadata.labels["backup-client"]
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["backup-client"]
+          value: "true"
+        documentIndex: 1

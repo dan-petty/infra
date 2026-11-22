@@ -152,6 +152,7 @@ jobs:
         k8s/tests/example
       helm-charts: |
         charts/example
+        charts/service-tenant
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
 

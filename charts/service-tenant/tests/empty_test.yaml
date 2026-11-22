@@ -1,0 +1,13 @@
+suite: The chart with no services entry
+templates:
+  - templates/guards.yaml
+  - templates/namespace.yaml
+  - templates/appproject.yaml
+  - templates/networkpolicy.yaml
+  - templates/limitrange.yaml
+  - templates/middleware.yaml
+tests:
+  - it: renders no object with the default values
+    asserts:
+      - hasDocuments:
+          count: 0

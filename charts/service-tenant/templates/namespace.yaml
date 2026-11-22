@@ -1,0 +1,28 @@
+{{- /*
+Each namespace of the service. The trusted tenant Application makes the Namespace, so the
+AppProject of the service needs no cluster-scoped kind. warn and audit stay restricted, so each
+restricted violation of a baseline namespace shows in the warnings and the audit log. Argo CD never
+prunes or deletes a Namespace, and the data in it.
+*/ -}}
+{{- if .Values.name }}
+{{- range .Values.namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+    pod-security.kubernetes.io/enforce: {{ .podSecurity | default "restricted" }}
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+    # The monitoring perimeter admits each namespace with this label, and names no service.
+    monitoring-scrape: "true"
+    {{- if .backup }}
+    # The perimeter of the object store admits each namespace with this label to its S3 port.
+    backup-client: "true"
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+{{- end }}
+{{- end }}

@@ -18,3 +18,4 @@ The README of each chart names its consumers.
 | Chart | Content | Consumers |
 | --- | --- | --- |
 | `example` | One ConfigMap: the fixture of the checks. | None. |
+| [`service-tenant`](service-tenant/README.md) | The tenant of one service repository: its Namespaces, its Argo CD AppProject, and the default-deny NetworkPolicies, the LimitRange and the Traefik Middleware `security-headers` of each namespace. | None yet. dan-petty/infra#11 plans the first consumer. |

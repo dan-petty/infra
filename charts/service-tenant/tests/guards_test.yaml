@@ -1,0 +1,189 @@
+suite: Guards of the services entry
+templates:
+  - templates/guards.yaml
+tests:
+  - it: renders no object for a valid entry
+    values:
+      - ../ci/test-values.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: refuses an unknown key in the entry
+    values:
+      - ../ci/test-values.yaml
+    set:
+      unknownKey: x
+    asserts:
+      - failedTemplate:
+          errorPattern: unknownKey
+  - it: refuses an entry with no repoURL, path, targetRevision or namespaces
+    set:
+      name: example
+    asserts:
+      - failedTemplate:
+          errorPattern: "properties 'repoURL', 'path', 'targetRevision', 'namespaces' required, if 'name' exists"
+  - it: refuses an entry key with no name
+    set:
+      repoURL: https://git.example.com/example.git
+    asserts:
+      - failedTemplate:
+          errorPattern: "properties 'name' required, if 'repoURL' exists"
+  - it: refuses platform values that the consumer removes
+    values:
+      - ../ci/test-values.yaml
+    set:
+      reservedProjects: null
+    asserts:
+      - failedTemplate:
+          errorPattern: "missing property 'reservedProjects'"
+  - it: refuses the namespace kube-system
+    values:
+      - ../ci/test-values.yaml
+    set:
+      namespaces:
+        - name: kube-system
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "kube-system" is reserved \(reservedNamespaces\)
+  - it: refuses a namespace that the consumer reserves
+    values:
+      - ../ci/test-values.yaml
+    set:
+      reservedNamespaces:
+        - monitoring
+      namespaces:
+        - name: example
+        - name: monitoring
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "monitoring" is reserved \(reservedNamespaces\)
+  - it: refuses the namespace of Argo CD also when reservedNamespaces leaves it out
+    values:
+      - ../ci/test-values.yaml
+    set:
+      reservedNamespaces: []
+      argocd:
+        namespace: gitops
+      namespaces:
+        - name: gitops
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "gitops" is reserved \(argocd.namespace\)
+  - it: refuses the namespace of the cluster DNS also when reservedNamespaces leaves it out
+    values:
+      - ../ci/test-values.yaml
+    set:
+      reservedNamespaces: []
+      namespaces:
+        - name: kube-system
+    asserts:
+      - failedTemplate:
+          errorPattern: the namespace "kube-system" is reserved \(dns.namespace\)
+  - it: refuses a namespace that the entry names two times
+    values:
+      - ../ci/test-values.yaml
+    set:
+      namespaces:
+        - name: example
+        - name: example
+    asserts:
+      - failedTemplate:
+          errorPattern: the entry names the namespace "example" more than one time
+  - it: refuses the name of the project services-admin
+    values:
+      - ../ci/test-values.yaml
+    set:
+      name: services-admin
+    asserts:
+      - failedTemplate:
+          errorPattern: the name "services-admin" is a reserved project \(reservedProjects\)
+  - it: refuses the name of a project that the consumer reserves
+    values:
+      - ../ci/test-values.yaml
+    set:
+      reservedProjects:
+        - default
+        - services-admin
+        - platform
+      name: platform
+    asserts:
+      - failedTemplate:
+          errorPattern: the name "platform" is a reserved project \(reservedProjects\)
+  - it: refuses the Pod Security level privileged
+    values:
+      - ../ci/test-values.yaml
+    set:
+      namespaces:
+        - name: example
+          podSecurity: privileged
+    asserts:
+      - failedTemplate:
+          errorPattern: podSecurity
+  - it: refuses a glob in repoURL
+    values:
+      - ../ci/test-values.yaml
+    set:
+      repoURL: https://git.example.com/*
+    asserts:
+      - failedTemplate:
+          errorPattern: repoURL
+  - it: refuses a glob in an extra kind
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: "*"
+          kind: "*"
+    asserts:
+      - failedTemplate:
+          errorPattern: extraKinds
+  - it: refuses the extra kind Secret in each group
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: apps
+          kind: Secret
+    asserts:
+      - failedTemplate:
+          errorPattern: the extra kind "Secret" is forbidden
+  - it: refuses the extra kind Role
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: rbac.authorization.k8s.io
+          kind: Role
+    asserts:
+      - failedTemplate:
+          errorPattern: the extra kind "Role" is forbidden
+  - it: refuses the extra kind RoleBinding
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: rbac.authorization.k8s.io
+          kind: RoleBinding
+    asserts:
+      - failedTemplate:
+          errorPattern: the extra kind "RoleBinding" is forbidden
+  - it: refuses the extra kind SecretStore
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: external-secrets.io
+          kind: SecretStore
+    asserts:
+      - failedTemplate:
+          errorPattern: the extra kind "SecretStore" is forbidden
+  - it: refuses an ESO generator other than Password
+    values:
+      - ../ci/test-values.yaml
+    set:
+      extraKinds:
+        - group: generators.external-secrets.io
+          kind: Webhook
+    asserts:
+      - failedTemplate:
+          errorPattern: the extra kind "Webhook" of generators.external-secrets.io is forbidden
