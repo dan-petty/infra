@@ -1,0 +1,123 @@
+name: PR Title
+
+# The pull request title check of a repository, as a reusable workflow. release-please reads the
+# title of each commit on main as a Conventional Commit, and drops a title that it cannot parse with
+# no warning (README.md, "Releases"). So this workflow checks the title of each pull request into
+# main. The squash commit of a pull request with more than one commit gets the title of the pull
+# request; that of a pull request with one commit gets the subject of the commit
+# (squash_merge_commit_title COMMIT_OR_PR_TITLE). So validateSingleCommit also checks the subject of
+# the commit of a pull request with one commit. The title is also the line of the changelog, so its
+# summary has at most 60 characters. The action compares subjectPattern with the summary only.
+#
+# The scope is optional. A scope is the name after "scope/" of a scope/* label of the
+# .github/labels.yml of the caller, or `main`, the scope of the release pull request of
+# release-please. The job reads the labels file of the commit of the run, so a pull request that adds
+# a scope label can use that scope in its title. Another repository calls the workflow at a release
+# tag of infra, which Renovate updates (README.md, "Call the reusable workflows"):
+#
+#   on:
+#     pull_request:
+#       types: [opened, edited, synchronize, reopened]
+#       branches:
+#         - main
+#   permissions: {}
+#   jobs:
+#     pr-title:
+#       name: PR title
+#       uses: dan-petty/infra/.github/workflows/pr-title.yml@vX.Y.Z
+#       permissions:
+#         contents: read
+#         pull-requests: read
+#
+# The job checks out the labels file of the caller, and the infra commit of this workflow
+# (job.workflow_sha) into .infra-workflow. It installs the yq of the mise.toml and mise.lock of that
+# commit, and scripts/pr-title-scopes.sh of that commit reads the scopes.
+on:
+  workflow_call:
+
+permissions: {}
+
+env:
+  # No tool of the job reports usage.
+  DO_NOT_TRACK: "1"
+  MISE_USE_VERSIONS_HOST_TRACK: "false"
+
+jobs:
+  semantic-title:
+    name: Semantic PR title
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # Check out the labels file of the repository.
+      pull-requests: read # Read the title and the commits of the pull request.
+    # A new edit or push cancels the check of the older title. The group has the prefix infra-, so it
+    # is not the group of a caller (README.md, "Call the reusable workflows").
+    concurrency:
+      group: infra-pr-title-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Check out the labels file of the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/labels.yml
+
+      - name: Check out the infra commit of this workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .infra-workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /mise.toml
+            /mise.lock
+            /scripts/pr-title-scopes.sh
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.12"
+          install: false
+          cache: false
+
+      # mise installs yq at the URL and checksum of mise.lock, and puts its folder first on PATH. A
+      # mise.toml of the caller does not change it.
+      - name: Install the yq of mise.lock
+        timeout-minutes: 3
+        working-directory: .infra-workflow
+        env:
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$WORKFLOW_SHA"
+          mise install --locked yq
+          mise bin-paths yq >>"$GITHUB_PATH"
+
+      # The labels file comes from the pull request, so the output gets a random delimiter: no line
+      # of the file can end the value (GitHub docs, "Multiline strings").
+      - name: Read the scopes of the labels file
+        id: scopes
+        timeout-minutes: 2
+        run: |
+          delimiter="scopes-$(openssl rand -hex 16)"
+          {
+            echo "list<<$delimiter"
+            .infra-workflow/scripts/pr-title-scopes.sh .github/labels.yml
+            echo "$delimiter"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Check that the title is a Conventional Commit
+        uses: amannn/action-semantic-pull-request@c5e23b7e584519ee15caa684cf60d056aa9f035f # v6.1.3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          scopes: ${{ steps.scopes.outputs.list }}
+          validateSingleCommit: true
+          subjectPattern: ^.{1,60}$
+          subjectPatternError: >-
+            The summary after "<type>(<scope>): " has more than 60 characters. Shorten it to 60
+            characters or fewer.

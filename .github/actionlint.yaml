@@ -6,8 +6,11 @@ self-hosted-runner:
     - ubuntu-26.04
 paths:
   # The properties workflow_repository and workflow_sha of the job context, which give a reusable
-  # workflow its own commit (rhysd/actionlint#707). Only this message is ignored, and only in this
-  # file.
+  # workflow its own commit (rhysd/actionlint#707). Only this message is ignored, and only in the
+  # reusable workflows that check out their own commit.
   .github/workflows/k8s-validate.yml:
+    ignore:
+      - 'property "workflow_(repository|sha)" is not defined in object type \{check_run_id: number;'
+  .github/workflows/pr-title.yml:
     ignore:
       - 'property "workflow_(repository|sha)" is not defined in object type \{check_run_id: number;'

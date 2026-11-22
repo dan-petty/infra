@@ -1,34 +1,80 @@
 name: Release
 
-# release-please makes each release of infra (README.md, "Releases"). On each push to main it opens
-# or updates one release pull request, which holds the next version in version.txt,
-# .release-please-manifest.json and ansible/galaxy.yml, and the new entry of CHANGELOG.md. When a
-# person merges that pull request, the next run creates the tag vX.Y.Z and its GitHub release.
+# The release job of a repository, as a reusable workflow. release-please makes each release
+# (README.md, "Releases"). On each push to main it opens or updates one release pull request, which
+# holds the next version in the files of the release-please config of the caller, and the new entry
+# of CHANGELOG.md. When a person merges that pull request, the next run creates the tag vX.Y.Z and
+# its GitHub release. Another repository calls the workflow at a release tag of infra, which
+# Renovate updates (README.md, "Call the reusable workflows"):
+#
+#   on:
+#     push:
+#       branches:
+#         - main
+#   permissions: {}
+#   jobs:
+#     release:
+#       name: Release
+#       uses: dan-petty/infra/.github/workflows/release.yml@vX.Y.Z
+#       permissions: {}
+#       secrets:
+#         RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+#
+# The token of the release App opens the release pull request and creates the release tag, so the
+# checks of the caller run on the pull request and the tag starts the workflows of the tag. A pull
+# request or a tag that GITHUB_TOKEN creates starts no workflow. The job runs in the environment
+# release of the caller, which holds the variable RELEASE_APP_CLIENT_ID and the secret
+# RELEASE_APP_PRIVATE_KEY of the App, and only main deploys to it (devops-cli ADR 0032). The job
+# that calls a reusable workflow cannot set environment, so this job sets it. The caller must still
+# pass the secret by name, and the job gets the value of the environment secret (GitHub docs,
+# "Reuse workflows", "Using inputs and secrets in a reusable workflow").
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      config-file:
+        description: The release-please config file of the caller, relative to the repository root.
+        type: string
+        default: release-please-config.json
+      manifest-file:
+        description: The release-please manifest file of the caller, relative to the repository root.
+        type: string
+        default: .release-please-manifest.json
+    secrets:
+      RELEASE_APP_PRIVATE_KEY:
+        description: >-
+          The private key of the release App. Pass it by name; the job gets the value of the secret of
+          the environment release of the caller.
+        required: true
+    outputs:
+      release_created:
+        description: true when the run created the release of the root package, else empty.
+        value: ${{ jobs.release-please.outputs.release_created }}
+      tag_name:
+        description: The tag of the release that the run created, such as v1.2.3, else empty.
+        value: ${{ jobs.release-please.outputs.tag_name }}
 
 permissions: {}
-
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-26.04
     timeout-minutes: 10
-    # The token of the release App opens the release pull request, so the checks of ci.yml run on
-    # it; a pull request that GITHUB_TOKEN opens starts no workflow. The environment release holds
-    # the credentials of the App (devops-cli ADR 0032).
     environment: release
     permissions: {}
+    # The runs of one branch do not overlap. The group has the prefix infra-, so it is not the group
+    # of a caller (README.md, "Call the reusable workflows").
+    concurrency:
+      group: infra-release-${{ github.ref }}
+      cancel-in-progress: false
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
 
     steps:
       # Without the credentials, the next step stops with a message that does not name the
-      # environment. This step names each missing credential and stops the job.
+      # environment. This step names each missing credential and stops the job. When the caller does
+      # not pass the secret, the run stops before the job starts (required: true).
       - name: Check the credentials of the release App
         env:
           HAS_CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
@@ -64,9 +110,13 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
 
+      # The action reads the release type of each package from the config file. Its input
+      # release-type would make it ignore the config file and the manifest file, so the workflow does
+      # not give it.
       - name: Run release-please
+        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app.outputs.token }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: ${{ inputs.config-file }}
+          manifest-file: ${{ inputs.manifest-file }}

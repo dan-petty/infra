@@ -27,7 +27,7 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `tf/examples/` | An example for each OpenTofu module. |
 | `renovate/` | Renovate presets that other repositories extend. |
 | `docs/` | Documents that apply to more than one template. |
-| `.github/workflows/` | CI (`ci.yml`), the releases (`release.yml`) and the reusable workflow `k8s-validate.yml`. |
+| `.github/workflows/` | CI (`ci.yml`), the reusable workflows `k8s-validate.yml`, `pr-title.yml` and `release.yml`, and the callers of infra: the title check (`pr-title-caller.yml`) and the releases (`release-caller.yml`). |
 
 The README of each folder tells its content and the consumers of each template. Each folder that
 a CI job checks has an `example` fixture, so CI proves that each check runs; the test chart of
@@ -52,22 +52,25 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 | Argo CD source | `repoURL: https://github.com/dan-petty/infra.git` with `targetRevision: vX.Y.Z` |
 | Ansible collection | `name: https://github.com/dan-petty/infra.git#/ansible/`, `type: git`, `version: vX.Y.Z` |
 | OpenTofu module | `git::https://github.com/dan-petty/infra.git//tf/modules/<module>?ref=vX.Y.Z` |
-| Reusable workflow | `uses: dan-petty/infra/.github/workflows/k8s-validate.yml@vX.Y.Z` |
+| Reusable workflow | `uses: dan-petty/infra/.github/workflows/<workflow>.yml@vX.Y.Z` |
 
 ## Releases
 
 [release-please](https://github.com/googleapis/release-please-action) makes each release. On each
-push to `main`, `.github/workflows/release.yml` opens or updates one release pull request. It holds
-the next version in `version.txt`, `.release-please-manifest.json` and `ansible/galaxy.yml`, the
-next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and the new entry of
-`CHANGELOG.md`. When a person merges the release pull request, release-please creates the tag
+push to `main`, `.github/workflows/release-caller.yml` calls the reusable workflow `release.yml` of
+the same commit ("Call the reusable workflows"), which opens or updates one release pull request.
+It holds the next version in `version.txt`, `.release-please-manifest.json` and
+`ansible/galaxy.yml`, the next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and
+the new entry of `CHANGELOG.md`. When a person merges the release pull request, release-please creates the tag
 `vX.Y.Z` and its GitHub release. `.github/CODEOWNERS` names `dan-petty` as the owner of each file, so GitHub asks dan-petty to review each pull request when it opens, the release pull request too. With the repository setting *immutable releases*, nobody can move
 or delete a published tag, so a pin always gets the same content.
 
 release-please reads the type of each commit on `main` since the last release. The largest change
 gives the next version. The merge settings of the repository decide if the pull request title or the
 commit subjects of the branch land on `main`. Thus write the pull request title and each commit
-subject as a Conventional Commit:
+subject as a Conventional Commit. `.github/workflows/pr-title-caller.yml` calls the reusable workflow
+`pr-title.yml` of the same commit, which checks the title of each pull request and the subject of
+the commit of a pull request with one commit:
 
 | Commit | Next version |
 | --- | --- |
@@ -101,7 +104,23 @@ environment `release`, which holds the variable `RELEASE_APP_CLIENT_ID` and the 
 `RELEASE_APP_PRIVATE_KEY` of the App. When one of them is missing, the job stops with an error that
 names it.
 
-## Call the reusable workflow
+## Call the reusable workflows
+
+A repository calls a reusable workflow of infra at a release tag ("Pin a release"). The job that
+calls it gives the permissions that the called job needs: a called workflow can only reduce them.
+Each workflow runs the actions and the tools of its own infra commit, so a caller gets the versions
+of its tag. infra calls each workflow of its own commit, so its CI tests them: `ci.yml` calls
+`k8s-validate.yml`, `pr-title-caller.yml` calls `pr-title.yml` and `release-caller.yml` calls
+`release.yml`. The job YAML of `ci.yml` runs [zizmor](https://docs.zizmor.sh/) over the workflows:
+each action has a pin to a commit SHA, no job gets more permissions than it needs and no call passes
+`secrets: inherit`. `.github/zizmor.yml` holds its settings.
+
+`pr-title.yml` and `release.yml` set the concurrency of their job, with a group that starts with
+`infra-`. A caller needs no concurrency group. When it sets one, the group must not start with
+`infra-`: the same group in a caller and a called workflow can cancel the caller
+([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#supported-keywords-for-jobs-that-call-a-reusable-workflow)).
+
+### `k8s-validate.yml`
 
 `.github/workflows/k8s-validate.yml` (`on: workflow_call`) checks Kubernetes manifests, Helm charts
 and Prometheus rules. It runs `kustomize build` and `helm template` into `kubeconform -strict` (with
@@ -143,15 +162,90 @@ Each path is relative to the root of the caller repository. The shared `.kube-li
 the default checks of kube-linter, five more checks and the custom check `pvc-prune-protection`: a
 PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `Delete=false`.
 
+### `pr-title.yml`
+
+`.github/workflows/pr-title.yml` (`on: workflow_call`) checks the title of a pull request with
+[action-semantic-pull-request](https://github.com/amannn/action-semantic-pull-request): a
+Conventional Commit, with a summary of at most 60 characters ("Releases"). For a pull request with
+one commit, it also checks the subject of the commit (`validateSingleCommit`), because the squash
+commit then gets that subject. The scope is optional. The scopes are the name after `scope/` of
+each `scope/*` label of the `.github/labels.yml` of the caller, and `main`, the scope of the release
+pull request. The job reads the labels file of the commit of the run with
+`scripts/pr-title-scopes.sh` of its infra commit, so a new scope label needs no change of the
+workflow. When the labels file is missing, the job stops with an error that names it.
+
+```yaml
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  pr-title:
+    name: PR title
+    uses: dan-petty/infra/.github/workflows/pr-title.yml@vX.Y.Z
+    permissions:
+      contents: read
+      pull-requests: read
+```
+
+The type `edited` runs the check again after a change of the title. The workflow has no inputs.
+The check of the caller above has the name `PR title / Semantic PR title`.
+
+### `release.yml`
+
+`.github/workflows/release.yml` (`on: workflow_call`) runs release-please with the token of the
+release App ("Releases"). Its job runs in the environment `release` of the caller, which holds the
+variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` of the App. A job that
+calls a reusable workflow cannot set `environment`, so the called job sets it. The caller must
+still pass the secret by name, and the job then gets the value of the environment secret
+([GitHub docs](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#using-inputs-and-secrets-in-a-reusable-workflow)).
+When the caller does not pass the secret, the run stops before the job starts. When the
+environment does not hold the variable or the secret, the first step stops the job with an error
+that names each missing credential. Keep the key only in the environment `release`: the workflows
+of each branch can read a repository secret.
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  release:
+    name: Release
+    uses: dan-petty/infra/.github/workflows/release.yml@vX.Y.Z
+    permissions: {}
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+```
+
+| Input | Content |
+| --- | --- |
+| `config-file` | The release-please config file of the caller, which holds the release type of each package. The default is `release-please-config.json`. |
+| `manifest-file` | The release-please manifest file of the caller. The default is `.release-please-manifest.json`. |
+
+| Output | Content |
+| --- | --- |
+| `release_created` | `true` when the run created the release of the root package, else empty. |
+| `tag_name` | The tag of that release, such as `v1.2.3`, else empty. |
+
+A later job of the caller can publish the release with `needs: release` and
+`if: needs.release.outputs.release_created == 'true'`.
+
 ## Tools
 
 The repository pins each tool of the checks. `mise.toml` and `mise.lock` pin the binary tools
 (actionlint, gitleaks, helm, helm-unittest, jq, kube-linter, kubeconform, kustomize, Node, OpenTofu,
 promtool, shellcheck, tflint, trivy, uv and yq), with the checksum of each download. The test of the
 Renovate presets runs the Renovate release of `tests/test-renovate-presets.sh` with the `npx` of
-that Node. `pyproject.toml` and
-`uv.lock` pin the Python tools (ansible-core, ansible-lint, pre-commit and yamllint). Install them
-into one shared cache folder and into `.venv`:
+that Node. `pyproject.toml` and `uv.lock` pin the Python tools (ansible-core, ansible-lint,
+pre-commit, yamllint and zizmor). Install them into one shared cache folder and into `.venv`:
 
 ```sh
 export MISE_DATA_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/infra-tools/mise"
@@ -176,8 +270,8 @@ runs every job. To run a job locally, run its command from the repository root:
 | kube-linter config | `mise exec -- tests/test-kube-linter-config.sh` |
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, and in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file; a bare `trivy config tf/` gets no variable values and reports GCP-0061), then `tofu init -backend=false` and `tofu validate` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
-| YAML | `.venv/bin/yamllint --strict .` |
-| actionlint | `mise exec -- actionlint` |
+| YAML | `.venv/bin/yamllint --strict .` and `.venv/bin/zizmor --offline .github/workflows/` |
+| actionlint | `mise exec -- actionlint` and `mise exec -- tests/test-pr-title-scopes.sh` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |
 | Renovate presets | `mise exec -- tests/test-renovate-presets.sh`, with a GitHub token in `RENOVATE_GITHUB_COM_TOKEN` for the lookup ([renovate/README.md](renovate/README.md#test)) |
 
