@@ -1,0 +1,7 @@
+# The example base: the smallest base that the checks of k8s-validate.yml render. It holds the
+# placeholder <domain>, which the test overlay k8s/tests/example replaces with example.com.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - configmap.yaml
+  - persistentvolumeclaim.yaml

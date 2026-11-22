@@ -1,0 +1,2 @@
+# The host name of the URL in the ConfigMap. A consumer sets its own domain.
+host: example.com

@@ -1,0 +1,20 @@
+# The test overlay of the example base and the example component, with the values of a test:
+# example.com for <domain> and an RFC 5737 address.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: example
+resources:
+  - ../../bases/example
+components:
+  - ../../components/example
+patches:
+  - target:
+      kind: ConfigMap
+      name: example
+    patch: |-
+      - op: replace
+        path: /data/url
+        value: https://www.example.com/
+      - op: add
+        path: /data/address
+        value: 192.0.2.10

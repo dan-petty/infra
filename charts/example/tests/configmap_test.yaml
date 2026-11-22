@@ -1,0 +1,24 @@
+suite: ConfigMap of the example chart
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: puts the default host in the URL
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: data.url
+          value: https://example.com/
+  - it: puts the host of the test values in the URL
+    values:
+      - ../ci/test-values.yaml
+    asserts:
+      - equal:
+          path: data.url
+          value: https://www.example.com/
+  - it: refuses an empty host
+    set:
+      host: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: host is required

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: example
+description: The smallest chart that the Helm checks of k8s-validate.yml lint, render and test.
+type: application
+version: 0.1.0

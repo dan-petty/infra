@@ -1,0 +1,3 @@
+# The test files are not part of the chart package.
+ci/
+tests/

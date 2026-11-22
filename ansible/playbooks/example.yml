@@ -1,0 +1,8 @@
+---
+# The sample play of the collection. It takes its hosts from the variable target_hosts and has no
+# default host: ansible-playbook dan_petty.infra.example -e target_hosts=<group>.
+- name: Run the example role
+  hosts: "{{ target_hosts }}"
+  gather_facts: false
+  roles:
+    - role: dan_petty.infra.example

@@ -1,0 +1,12 @@
+---
+# ansible-lint settings of the Ansible job of CI, which runs ansible-lint in this folder. In this
+# folder, ansible-lint sees galaxy.yml and installs the collection into .ansible/, so the syntax
+# check finds each role by its full name. offline: true would stop that install. The production
+# profile is the strictest profile: the content of infra is new, so it starts at that profile.
+profile: production
+offline: false
+exclude_paths:
+  - .ansible/
+# Each play takes its hosts from target_hosts, and the syntax check needs a value.
+extra_vars:
+  target_hosts: localhost

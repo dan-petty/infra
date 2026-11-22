@@ -1,0 +1,3 @@
+---
+# The URL that the role checks. A consumer sets its own URL.
+example_url: https://example.com/

@@ -1,0 +1,367 @@
+name: CI
+
+# The checks of infra, on each pull request, each push to main and each manual run. The job changes
+# finds the tools whose files a change touches (dorny/paths-filter), and a check job runs only when
+# its filter matches. A manual run (workflow_dispatch, Actions tab or `gh workflow run ci.yml`) runs
+# every job. The private-data guard runs on each event, because a change to any file can add
+# private data. Each job installs its tools from mise.toml and mise.lock, and the Python tools from
+# uv.lock, as a local run does (README.md, "Checks").
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # No tool of the jobs reports usage. mise exec runs only the tools that the job installed.
+  DO_NOT_TRACK: "1"
+  MISE_USE_VERSIONS_HOST_TRACK: "false"
+  MISE_EXEC_AUTO_INSTALL: "false"
+  # uv runs only its own CPython builds, never the Python of the runner image.
+  UV_MANAGED_PYTHON: "1"
+
+jobs:
+  changes:
+    name: Changes
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      k8s: ${{ steps.filter.outputs.k8s }}
+      tofu: ${{ steps.filter.outputs.tofu }}
+      ansible: ${{ steps.filter.outputs.ansible }}
+      yaml: ${{ steps.filter.outputs.yaml }}
+      actions: ${{ steps.filter.outputs.actions }}
+      shell: ${{ steps.filter.outputs.shell }}
+
+    steps:
+      # A pull request gives its files through the API. A push compares the commits with git.
+      - name: Check out repository
+        if: github.event_name == 'push'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 20
+
+      - name: Find the changed tools
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            tools: &tools
+              - .github/workflows/ci.yml
+              - mise.toml
+              - mise.lock
+            python: &python
+              - *tools
+              - pyproject.toml
+              - uv.lock
+            k8s:
+              - *tools
+              - .github/workflows/k8s-validate.yml
+              - .kube-linter.yaml
+              - scripts/k8s-validate.sh
+              - tests/test-kube-linter-config.sh
+              - k8s/**
+              - charts/**
+              - helm/**
+            tofu:
+              - *tools
+              - .tflint.hcl
+              - tf/**
+            ansible:
+              - *python
+              - ansible/**
+            yaml:
+              - *python
+              - .yamllint.yaml
+              - "**/*.yaml"
+              - "**/*.yml"
+            actions:
+              - *tools
+              - .github/workflows/**
+              - .github/actionlint.yaml
+            shell:
+              - *tools
+              - "**/*.sh"
+
+  private-data:
+    name: Private-data guard
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install gitleaks
+        timeout-minutes: 3
+        run: mise install --locked gitleaks
+
+      - name: Test the rules of the guard
+        timeout-minutes: 3
+        run: mise exec -- tests/test-private-data-scan.sh
+
+      # The Actions secret PRIVATE_DOMAINS holds the real domains, one on each line. When it is not
+      # set (or the pull request comes from a fork), the step writes a warning in the log and in the
+      # job summary, and runs the rules of .gitleaks.toml only.
+      - name: Scan the files for private data
+        timeout-minutes: 3
+        env:
+          PRIVATE_DOMAINS: ${{ secrets.PRIVATE_DOMAINS }}
+        run: mise exec -- scripts/private-data-scan.sh dir .
+
+  k8s:
+    name: K8s
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/k8s-validate.yml
+    with:
+      kustomize-roots: |
+        k8s/tests/example
+      helm-charts: |
+        charts/example
+      promtool-rules: |
+        k8s/components/example/rules/example.rules.yaml
+
+  k8s-config:
+    name: kube-linter config
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install kube-linter
+        timeout-minutes: 3
+        run: mise install --locked kube-linter
+
+      - name: Test the custom checks of .kube-linter.yaml
+        timeout-minutes: 3
+        run: mise exec -- tests/test-kube-linter-config.sh
+
+  tofu:
+    name: OpenTofu
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.tofu == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install OpenTofu and tflint
+        timeout-minutes: 3
+        run: mise install --locked opentofu tflint
+
+      - name: Check the format
+        timeout-minutes: 2
+        run: mise exec -- tofu fmt -check -recursive -diff tf/
+
+      - name: Run tflint
+        timeout-minutes: 3
+        env:
+          # tflint reads the plugin releases from GitHub with this token.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mise exec -- tflint --init --config "$PWD/.tflint.hcl"
+          mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"
+
+      - name: Validate each example
+        timeout-minutes: 3
+        run: |
+          for example in tf/examples/*/; do
+            echo "tofu validate $example"
+            mise exec -- tofu -chdir="$example" init -backend=false -input=false
+            mise exec -- tofu -chdir="$example" validate
+          done
+
+  ansible:
+    name: Ansible
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.ansible == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install uv and the Python tools of uv.lock
+        timeout-minutes: 5
+        run: |
+          mise install --locked uv
+          mise exec -- uv sync --frozen
+          echo "$PWD/.venv/bin" >>"$GITHUB_PATH"
+
+      - name: Run ansible-lint
+        timeout-minutes: 5
+        working-directory: ansible
+        run: ansible-lint
+
+      - name: Build the collection
+        timeout-minutes: 2
+        run: |
+          ansible-galaxy collection build ansible/ --output-path "$RUNNER_TEMP"
+          ls "$RUNNER_TEMP"/dan_petty-infra-*.tar.gz
+
+  yaml:
+    name: YAML
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.yaml == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install uv and the Python tools of uv.lock
+        timeout-minutes: 5
+        run: |
+          mise install --locked uv
+          mise exec -- uv sync --frozen
+          echo "$PWD/.venv/bin" >>"$GITHUB_PATH"
+
+      - name: Run yamllint
+        timeout-minutes: 2
+        run: yamllint --strict .
+
+  actions:
+    name: actionlint
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.actions == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install actionlint and shellcheck
+        timeout-minutes: 3
+        run: mise install --locked actionlint shellcheck
+
+      # actionlint also runs shellcheck on the script of each run step.
+      - name: Run actionlint
+        timeout-minutes: 2
+        run: mise exec -- actionlint
+
+  shell:
+    name: shellcheck
+    needs: changes
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.shell == 'true')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: "2026.11.10"
+          install: false
+          cache: false
+
+      - name: Install shellcheck
+        timeout-minutes: 3
+        run: mise install --locked shellcheck
+
+      - name: Run shellcheck
+        timeout-minutes: 2
+        run: git ls-files -z '*.sh' | xargs -0 mise exec -- shellcheck

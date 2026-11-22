@@ -1,0 +1,7 @@
+---
+- name: Check that the example URL is an HTTPS URL
+  ansible.builtin.assert:
+    that:
+      - example_url is match('^https://')
+    fail_msg: example_url must start with https://.
+    quiet: true
