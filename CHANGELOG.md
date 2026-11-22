@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/dan-petty/infra/compare/v0.1.0...v0.2.0) (2026-11-22)
+
+
+### Features
+
+* **ci:** add reusable pr-title and release workflows ([#39](https://github.com/dan-petty/infra/issues/39)) ([3ba0c1f](https://github.com/dan-petty/infra/commit/3ba0c1f7fcbdbd677067a475bfe7a21a489fb66e))
+
 ## 0.1.0 (2026-11-22)
 
 
