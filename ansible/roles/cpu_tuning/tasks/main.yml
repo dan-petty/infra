@@ -1,0 +1,23 @@
+---
+- name: Install the CPU tuning script
+  ansible.builtin.template:
+    src: cpu-tuning.sh.j2
+    dest: /usr/local/sbin/cpu-tuning
+    mode: "0755"
+  register: cpu_tuning_script
+
+- name: Install the CPU tuning service
+  ansible.builtin.copy:
+    src: cpu-tuning.service
+    dest: /etc/systemd/system/cpu-tuning.service
+    mode: "0644"
+  register: cpu_tuning_unit
+
+- name: Enable the CPU tuning service and apply the settings
+  ansible.builtin.systemd:
+    name: cpu-tuning
+    enabled: true
+    daemon_reload: "{{ cpu_tuning_unit.changed }}"
+    state: "{{ 'restarted' if (cpu_tuning_script.changed or cpu_tuning_unit.changed) else 'started' }}"
+  # In check mode a new unit file is not written, so systemd cannot find the service yet.
+  when: not (ansible_check_mode and cpu_tuning_unit.changed)

@@ -1,0 +1,101 @@
+---
+argument_specs:
+  main:
+    short_description: Install the NVIDIA driver and the NVIDIA Container Toolkit on a Debian k3s node.
+    description:
+      - Add the NVIDIA apt sources, install the driver and the Container Toolkit, write the CDI
+        specification and start nvidia-persistenced.
+      - Pin the driver packages to a driver branch when nvidia_driver_branch is set.
+      - Set a persistent GPU power limit when nvidia_gpu_power_limit is set.
+      - Restart the k3s node service when a Container Toolkit package is new.
+    options:
+      devops_infra_node_service:
+        type: str
+        required: true
+        description:
+          - The systemd unit that runs the Kubernetes node, k3s on a server and k3s-agent on an
+            agent. The inventory sets it for each host.
+      nvidia_cuda_repo_url:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/
+        description: The CUDA apt repository of the current driver branch.
+      nvidia_cuda_repo_gpg:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/8793F200.pub
+        description: The URL of the signing key of nvidia_cuda_repo_url.
+      nvidia_legacy_cuda_repo_url:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/
+        description:
+          - The CUDA apt repository of the pinned driver branch. The role adds it only when
+            nvidia_driver_branch is set.
+      nvidia_driver_branch:
+        type: str
+        description:
+          - The driver branch, for example 580, that the role pins with an apt preference. Not set
+            means the current branch of nvidia_cuda_repo_url, with no pin.
+      nvidia_driver_packages:
+        type: list
+        elements: str
+        default:
+          - nvidia-driver
+          - nvidia-driver-cuda
+          - nvidia-kernel-open-dkms
+        description: The driver packages to install.
+      nvidia_container_toolkit_repo_url:
+        type: str
+        default: https://nvidia.github.io/libnvidia-container/stable/deb/amd64
+        description: The apt repository of the NVIDIA Container Toolkit.
+      nvidia_container_toolkit_repo_gpg:
+        type: str
+        default: https://nvidia.github.io/libnvidia-container/gpgkey
+        description: The URL of the signing key of nvidia_container_toolkit_repo_url.
+      nvidia_container_toolkit_packages:
+        type: list
+        elements: str
+        default:
+          - nvidia-container-toolkit
+          - nvidia-container-toolkit-base
+          - libnvidia-container-tools
+          - libnvidia-container1
+        description: The NVIDIA Container Toolkit packages to install.
+      nvidia_ctk_path:
+        type: str
+        default: /usr/bin/nvidia-ctk
+        description: The nvidia-ctk binary that writes the CDI specification /etc/cdi/nvidia.yaml.
+      nvidia_gpu_power_limit:
+        type: int
+        description:
+          - The power limit in watts that the unit nvidia-power-limit sets at each boot. Not set
+            means no unit. The value must be in the range of the card (nvidia-smi -q -d POWER).
+  apt_sources:
+    short_description: Add the NVIDIA apt sources and the pin of the driver branch.
+    description:
+      - The apt sources of the role, for a play that updates the packages of a host with no other
+        task of the role.
+    options:
+      nvidia_cuda_repo_url:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/
+        description: The CUDA apt repository of the current driver branch.
+      nvidia_cuda_repo_gpg:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/8793F200.pub
+        description: The URL of the signing key of nvidia_cuda_repo_url.
+      nvidia_legacy_cuda_repo_url:
+        type: str
+        default: https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/
+        description:
+          - The CUDA apt repository of the pinned driver branch. The role adds it only when
+            nvidia_driver_branch is set.
+      nvidia_driver_branch:
+        type: str
+        description: The driver branch that the role pins with an apt preference. Not set means no pin.
+      nvidia_container_toolkit_repo_url:
+        type: str
+        default: https://nvidia.github.io/libnvidia-container/stable/deb/amd64
+        description: The apt repository of the NVIDIA Container Toolkit.
+      nvidia_container_toolkit_repo_gpg:
+        type: str
+        default: https://nvidia.github.io/libnvidia-container/gpgkey
+        description: The URL of the signing key of nvidia_container_toolkit_repo_url.

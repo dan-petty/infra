@@ -1,0 +1,11 @@
+# The example inventory of the tests of the collection (tests/test-ansible-collection.sh of the
+# repository). The names are under example.com and the addresses are RFC 5737 addresses, so no test
+# reaches a host.
+[k3s_server]
+server-1.example.com ansible_host=192.0.2.10
+
+[gvisor_nodes]
+agent-1.example.com ansible_host=192.0.2.11
+
+[gpu_nodes]
+gpu-1.example.com ansible_host=192.0.2.12

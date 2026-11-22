@@ -1,0 +1,8 @@
+---
+# The node service of k3s holds the embedded containerd. A play can run this role before k3s is
+# installed, so the unit can be missing: the restart then fails and the run continues.
+- name: Restart the k3s node service
+  ansible.builtin.systemd:
+    name: "{{ devops_infra_node_service }}"
+    state: restarted
+  failed_when: false

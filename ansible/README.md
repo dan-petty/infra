@@ -10,10 +10,23 @@ gives the hosts and the values.
 | `meta/runtime.yml` | The ansible-core versions that the collection supports. |
 | `roles/<role>/` | One role, with `meta/argument_specs.yml` for its variables. |
 | `playbooks/<play>.yml` | One play. It takes its hosts from the variable `target_hosts` and has no default host. |
+| `tests/` | The example inventory and the test plays of the collection. The build leaves them out. |
 
-The role `example` and the play `example.yml` are fixtures: they let the Ansible job of CI prove
-that `ansible-lint` and `ansible-galaxy collection build` run. dan-petty/infra#7 and
-dan-petty/infra#8 add the real roles and plays.
+## Roles and plays
+
+| Role | Play | Content |
+| --- | --- | --- |
+| [`nvidia`](roles/nvidia/README.md) | None | The NVIDIA driver and the NVIDIA Container Toolkit of a Debian k3s node, a driver branch pin and a GPU power limit. |
+| [`gvisor`](roles/gvisor/README.md) | `gvisor.yml` | The pinned gVisor runtime (`runsc`) of a Debian k3s node, and the node label of its RuntimeClass. |
+| [`cpu_tuning`](roles/cpu_tuning/README.md) | `cpu_tuning.yml` | The CPU power limits and the disabled CPU idle states of a host, at each boot. |
+| `example` | `example.yml` | Fixtures: they let the Ansible job of CI prove that `ansible-lint` and `ansible-galaxy collection build` run. |
+
+The consumers of `nvidia`, `gvisor` and `cpu_tuning` are the Debian k3s clusters with NVIDIA GPU
+nodes, gVisor nodes or CPU settings of a BIOS to set from Linux. The README of each role tells its
+variables and its runbook. A role variable that only the inventory can give, such as
+`devops_infra_node_service`, has no default: the argument check of the role stops a host that does
+not set it. A consumer that runs a play from its own repository keeps a thin play that lists the
+role, with the hosts and the settings of its inventory.
 
 ## Version
 
@@ -46,3 +59,9 @@ From the folder `ansible/`, after `uv sync --frozen` in the repository root:
 ```
 
 The build writes `dan_petty-infra-<version>.tar.gz`, with the version of `galaxy.yml`.
+
+From the repository root, `tests/test-ansible-collection.sh` builds the collection and installs the
+archive into a temporary folder. Then it checks the syntax of each play, reads the argument specs of
+each role with `ansible-doc`, and runs the test plays of `tests/` with the example inventory
+`tests/inventory/example`. A test play runs no task on a host: the hosts of the example inventory
+have RFC 5737 addresses. Add a test play to `tests/` for each new behavior of a role.

@@ -1,0 +1,21 @@
+---
+# Test of the role nvidia: the argument check of the role stops a host that has no
+# devops_infra_node_service, before the first task of the role. When the check lets the host pass,
+# the next task connects to the RFC 5737 address of the host and fails, so the test fails.
+- name: Check that the nvidia role needs devops_infra_node_service
+  hosts: gpu_nodes
+  gather_facts: false
+  tasks:
+    - name: Run the nvidia role with no node service
+      block:
+        - name: Run the nvidia role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.nvidia
+      rescue:
+        - name: Check that the argument check named the node service
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'devops_infra_node_service' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true

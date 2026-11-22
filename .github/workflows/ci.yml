@@ -83,6 +83,7 @@ jobs:
             ansible:
               - *python
               - ansible/**
+              - tests/test-ansible-collection.sh
             yaml:
               - *python
               - .yamllint.yaml
@@ -281,6 +282,12 @@ jobs:
         run: |
           ansible-galaxy collection build ansible/ --output-path "$RUNNER_TEMP"
           ls "$RUNNER_TEMP"/dan_petty-infra-*.tar.gz
+
+      # The test installs the archive of the collection, as a consumer does, and runs the test plays
+      # of ansible/tests/ with the example inventory (ansible/README.md, "Check the collection").
+      - name: Test the roles and plays
+        timeout-minutes: 3
+        run: tests/test-ansible-collection.sh
 
   yaml:
     name: YAML

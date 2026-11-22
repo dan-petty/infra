@@ -1,0 +1,11 @@
+[Unit]
+Description=Set the CPU power limits and idle states of the host_vars (roles/cpu_tuning)
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/cpu-tuning
+
+[Install]
+WantedBy=multi-user.target

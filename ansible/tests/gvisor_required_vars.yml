@@ -1,0 +1,44 @@
+---
+# Test of the role gvisor: the argument check of the role stops a host that has no
+# devops_infra_node_service or no valid gvisor_node_role, before the first task of the role. When
+# the check lets the host pass, the next task connects to the RFC 5737 address of the host and
+# fails, so the test fails.
+- name: Check that the gvisor role needs the node service and the node role
+  hosts: gvisor_nodes
+  gather_facts: false
+  tasks:
+    - name: Run the gvisor role with no node service and no node role
+      block:
+        - name: Run the gvisor role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.gvisor
+      rescue:
+        - name: Check that the argument check named both variables
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'devops_infra_node_service' in ansible_failed_result.msg"
+              - "'gvisor_node_role' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true
+
+- name: Check that the gvisor role refuses an unknown node role
+  hosts: gvisor_nodes
+  gather_facts: false
+  vars:
+    devops_infra_node_service: k3s-agent
+    gvisor_node_role: worker
+  tasks:
+    - name: Run the gvisor role with an unknown node role
+      block:
+        - name: Run the gvisor role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.gvisor
+      rescue:
+        - name: Check that the argument check named the node role
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'gvisor_node_role' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true

@@ -1,0 +1,6 @@
+# Managed by Ansible (roles/gvisor): the runsc options of the runtime runsc. The shim reads this file
+# when it starts each sandbox, so a change needs no restart of the node service.
+[runsc_config]
+  # The kubelet uses the systemd cgroup driver, and all runtimes must use the same driver. containerd
+  # reads the driver of runsc from this key (runsc default: false).
+  systemd-cgroup = "true"
