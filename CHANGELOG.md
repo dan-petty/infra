@@ -1,0 +1,15 @@
+# Changelog
+
+## 0.1.0 (2026-11-22)
+
+
+### Features
+
+* **ansible:** ship the nvidia, gvisor and cpu_tuning roles ([#26](https://github.com/dan-petty/infra/issues/26)) ([9cd9d1f](https://github.com/dan-petty/infra/commit/9cd9d1f3111d590d43f63cbe933f12f63e75c441))
+* **argocd:** add the services ApplicationSet base ([#27](https://github.com/dan-petty/infra/issues/27)) ([04bd2f0](https://github.com/dan-petty/infra/commit/04bd2f062cec5df33ce7edd8c6fdcc504c7f437f))
+* **ci:** tag each release vX.Y.Z with release-please ([#21](https://github.com/dan-petty/infra/issues/21)) ([ca0f5e2](https://github.com/dan-petty/infra/commit/ca0f5e22639e84f19ee9816eec8fb100b839260e)), closes [#5](https://github.com/dan-petty/infra/issues/5)
+* **deps:** host the shared Renovate presets in infra ([#22](https://github.com/dan-petty/infra/issues/22)) ([cb3e1e5](https://github.com/dan-petty/infra/commit/cb3e1e54e17ab0f2f36a588b87c2cb722d850103))
+* **k8s:** add a Valkey base for cache and queue stores ([#25](https://github.com/dan-petty/infra/issues/25)) ([6f14e60](https://github.com/dan-petty/infra/commit/6f14e605743112acd1cf815e8f381baccbf7deea))
+* **k8s:** add ESO and a secret store for each service ([#31](https://github.com/dan-petty/infra/issues/31)) ([9c71afc](https://github.com/dan-petty/infra/commit/9c71afc0fce104dc89c03f7765e02e00510cc5c8))
+* **k8s:** add the service-tenant chart ([#24](https://github.com/dan-petty/infra/issues/24)) ([b367982](https://github.com/dan-petty/infra/commit/b367982868b623500ce256a2df83a60c89f008c4))
+* **tf:** add cloud cluster modules on maintained modules ([#29](https://github.com/dan-petty/infra/issues/29)) ([83f7391](https://github.com/dan-petty/infra/commit/83f7391b2249488881063e81cf1b7232ba6b0103))
