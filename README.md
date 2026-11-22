@@ -101,6 +101,13 @@ environment `release`, which holds the variable `RELEASE_APP_CLIENT_ID` and the 
 `RELEASE_APP_PRIVATE_KEY` of the App. When one of them is missing, the job stops with an error that
 names it.
 
+release-please requests no reviewer. When a run opens or updates the release pull request (the
+output `pr` of release-please), the next step of the job asks `dan-petty` to review it, with the
+same token of the release App. That token has write access to pull requests, which the review
+request needs. The step asks no review when `dan-petty` is already a requested reviewer or has
+reviewed the pull request. No workflow approves the release pull request, and no other App key is
+in the repository.
+
 ## Call the reusable workflow
 
 `.github/workflows/k8s-validate.yml` (`on: workflow_call`) checks Kubernetes manifests, Helm charts
