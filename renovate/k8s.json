@@ -1,0 +1,49 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "The Renovate preset of the repositories of dan-petty that keep Kubernetes manifests under k8s/. A repository extends it with github>dan-petty/infra//renovate/k8s, next to github>dan-petty/infra//renovate/base. The kubernetes manager reads each manifest under k8s/, the argocd manager each Argo CD Application under k8s/argocd/, and the helm-values manager each values file under k8s/. Each pin of dan-petty/infra moves in one pull request. The managers of Renovate read each consumer form of a pin of infra (dan-petty/infra, tests/renovate/), so the preset has no custom manager for them. A package rule gives the pin of the Ansible collection the name that the lookup reads.",
+  "kubernetes": {
+    "managerFilePatterns": ["/^k8s/.+\\.ya?ml$/"]
+  },
+  "argocd": {
+    "managerFilePatterns": ["/^k8s/argocd/.+\\.ya?ml$/"]
+  },
+  "helm-values": {
+    "managerFilePatterns": ["/^k8s/.+values[^/]*\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The PostgreSQL image of a CloudNativePG Cluster (spec.imageName), which the kubernetes manager does not read. The pattern reads only an imageName field at the indent of spec, so a deeper imageName field, such as one in Helm values, stays out.",
+      "managerFilePatterns": ["/^k8s/.+\\.ya?ml$/"],
+      "matchStrings": ["\\n  imageName: (?<depName>[^\\s:@]+):(?<currentValue>[^\\s@]+)"],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "A custom manager of a file under k8s/ updates the cluster.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["k8s/**"],
+      "addLabels": ["scope/infra"]
+    },
+    {
+      "description": "Renovate reads an Application source with no chart as a git dependency. An environment that tracks the branch main stays on main, so Renovate leaves such a source alone. A source at a release tag, such as a pin of dan-petty/infra, gets its updates.",
+      "matchManagers": ["argocd"],
+      "matchDatasources": ["git-tags"],
+      "matchCurrentValue": "/^main$/",
+      "enabled": false
+    },
+    {
+      "description": "The ansible-galaxy manager gives a collection from github.com the datasource github-tags with the URL of the repository as packageName. The github-tags datasource reads packageName as owner/repository, so a lookup of the URL fails (Renovate 44.257.9). The rule gives a pin of the Ansible collection of infra the packageName dan-petty/infra.",
+      "matchManagers": ["ansible-galaxy"],
+      "matchDatasources": ["github-tags"],
+      "matchPackageNames": ["/^https://github\\.com/dan-petty/infra(\\.git)?$/"],
+      "overridePackageName": "dan-petty/infra"
+    },
+    {
+      "description": "Each pin of dan-petty/infra (a Kustomize remote, an OpenTofu module, an Ansible collection, an Argo CD source and a reusable workflow) moves to a new release tag in one pull request.",
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
+      "groupName": "infra"
+    }
+  ]
+}

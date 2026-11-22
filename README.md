@@ -30,9 +30,9 @@ The private-data guard of CI refuses each of these values ("Private-data guard")
 | `.github/workflows/` | CI (`ci.yml`), the releases (`release.yml`) and the reusable workflow `k8s-validate.yml`. |
 
 The README of each folder tells its content and the consumers of each template. Each folder that
-a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` and
-`renovate/` get their first content with later items. The real templates come with later
-items, such as dan-petty/infra#6 (Renovate presets), #7 and #8 (Ansible roles and plays), #9
+a CI job checks has an `example` fixture, so CI proves that each check runs; `helm/` gets its
+first content with a later item. The fixture of `renovate/` is `tests/renovate/`. The real
+templates come with later items, such as dan-petty/infra#7 and #8 (Ansible roles and plays), #9
 (OpenTofu modules), #10 (a chart) and #11 to #19 (Kubernetes bases and components, and Helm values
 templates).
 
@@ -129,8 +129,10 @@ PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `Dele
 ## Tools
 
 The repository pins each tool of the checks. `mise.toml` and `mise.lock` pin the binary tools
-(actionlint, gitleaks, helm, helm-unittest, kube-linter, kubeconform, kustomize, OpenTofu, promtool,
-shellcheck, tflint, trivy and uv), with the checksum of each download. `pyproject.toml` and
+(actionlint, gitleaks, helm, helm-unittest, jq, kube-linter, kubeconform, kustomize, Node, OpenTofu,
+promtool, shellcheck, tflint, trivy and uv), with the checksum of each download. The test of the
+Renovate presets runs the Renovate release of `tests/test-renovate-presets.sh` with the `npx` of
+that Node. `pyproject.toml` and
 `uv.lock` pin the Python tools (ansible-core, ansible-lint, pre-commit and yamllint). Install them
 into one shared cache folder and into `.venv`:
 
@@ -159,6 +161,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | YAML | `.venv/bin/yamllint --strict .` |
 | actionlint | `mise exec -- actionlint` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |
+| Renovate presets | `mise exec -- tests/test-renovate-presets.sh`, with a GitHub token in `RENOVATE_GITHUB_COM_TOKEN` for the lookup ([renovate/README.md](renovate/README.md#test)) |
 
 ## Private-data guard
 

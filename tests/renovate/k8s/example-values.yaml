@@ -1,0 +1,5 @@
+# A fixture of tests/test-renovate-presets.sh: Helm values with an imageName field deeper than the
+# spec of a Cluster. The CloudNativePG custom manager of renovate/k8s.json must not read it.
+cluster:
+  spec:
+    imageName: ghcr.io/cloudnative-pg/postgresql:16.9

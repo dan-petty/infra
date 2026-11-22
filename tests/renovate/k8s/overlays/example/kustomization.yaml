@@ -1,0 +1,6 @@
+# A fixture of tests/test-renovate-presets.sh: a consumer pins a Kustomize component of infra at a
+# release tag. The kustomize manager of Renovate must read the pin. Nothing builds this overlay.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+components:
+  - https://github.com/dan-petty/infra//k8s/components/example?ref=v0.1.0
