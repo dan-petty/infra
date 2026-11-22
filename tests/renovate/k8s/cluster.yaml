@@ -1,0 +1,11 @@
+# A fixture of tests/test-renovate-presets.sh: a CloudNativePG Cluster names its PostgreSQL image in
+# spec.imageName. The CloudNativePG custom manager of renovate/k8s.json must read the image.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: example
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+  storage:
+    size: 1Gi

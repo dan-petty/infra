@@ -1,0 +1,18 @@
+# A fixture of tests/test-renovate-presets.sh: a consumer calls the reusable workflow of infra at a
+# release tag. The github-actions manager of Renovate must read the pin. GitHub runs only the
+# workflows of the root .github/workflows/, so this file never runs.
+name: K8s
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  k8s:
+    uses: dan-petty/infra/.github/workflows/k8s-validate.yml@v0.1.0
+    permissions:
+      contents: read
+    with:
+      kustomize-roots: |
+        k8s/tests/example

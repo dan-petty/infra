@@ -1,0 +1,17 @@
+# A fixture of tests/test-renovate-presets.sh: an Argo CD Application pins a folder of infra at a
+# release tag. The argocd manager of renovate/k8s.json reads each file under k8s/argocd/, so it
+# must read the pin.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: example
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dan-petty/infra.git
+    targetRevision: v0.1.0
+    path: k8s/tests/example
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: example

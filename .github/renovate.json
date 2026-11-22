@@ -1,7 +1,25 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Renovate opens the dependency update pull requests of infra. The shared preset of devops-cli sets the schedule, the groups and the labels.",
+  "description": "Renovate opens the dependency update pull requests of infra. The shared presets of renovate/ set the schedule, the groups, the labels and the managers of k8s/. config:recommended ignores each tests/ and examples/ folder, but the tests and the examples of infra are checks that CI runs, so Renovate updates them too. Renovate ignores only the fixture tests/renovate/: its pins of infra stay at one release tag, and tests/test-renovate-presets.sh reads them.",
   "extends": [
-    "github>dan-petty/devops-cli//.github/renovate/base"
+    "local>dan-petty/infra//renovate/base",
+    "local>dan-petty/infra//renovate/k8s"
+  ],
+  "ignorePaths": ["tests/renovate/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The Renovate release of tests/test-renovate-presets.sh, which runs the config validator and the extract with npx.",
+      "managerFilePatterns": ["/^tests/test-renovate-presets\\.sh$/"],
+      "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z_]+_VERSION=(?<currentValue>\\S+)"]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Renovate publishes several releases a day, so even a patch of the npm package waits for the schedule, as the Renovate images do in the base preset.",
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["renovate"],
+      "schedule": ["* * * * 1"]
+    }
   ]
 }

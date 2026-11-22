@@ -1,0 +1,6 @@
+# A fixture of tests/test-renovate-presets.sh: a consumer pins the Ansible collection of infra at a
+# release tag. The ansible-galaxy manager of Renovate must read the pin.
+collections:
+  - name: https://github.com/dan-petty/infra.git#/ansible/
+    type: git
+    version: v0.1.0
