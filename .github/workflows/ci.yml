@@ -186,6 +186,9 @@ jobs:
         helm/argo-workflows/test-chart
         helm/cert-manager/test-chart
         helm/traefik/test-chart
+        helm/prometheus-operator-crds/test-chart
+        helm/prometheus/test-chart
+        helm/k8s-monitoring/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
       trivy-ignorefile: helm/.trivyignore.yaml

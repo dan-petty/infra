@@ -1,0 +1,10 @@
+# Prometheus Operator CRDs Helm values template (#78).
+# Chart: prometheus-community/prometheus-operator-crds (33.0.2)
+# Repo:  https://prometheus-community.github.io/helm-charts
+#
+# Prometheus Operator CRDs define the monitoring resources for Kubernetes.
+# The keep resource-policy annotation ensures CRDs persist across Helm uninstalls.
+
+crds:
+  annotations:
+    helm.sh/resource-policy: keep
