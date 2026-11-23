@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/dan-petty/infra/compare/v0.18.0...v0.19.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Mattermost operator values template ([#95](https://github.com/dan-petty/infra/issues/95)) ([3f8bf39](https://github.com/dan-petty/infra/commit/3f8bf39ce62f618c21bf7f7b11a114c89572a556))
+
 ## [0.18.0](https://github.com/dan-petty/infra/compare/v0.17.0...v0.18.0) (2026-11-23)
 
 
