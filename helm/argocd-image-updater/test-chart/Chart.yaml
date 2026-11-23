@@ -4,5 +4,5 @@ description: Test chart that pins argocd-image-updater
 version: 0.1.0
 dependencies:
   - name: argocd-image-updater
-    version: 1.4.2
+    version: 1.5.0
     repository: https://argoproj.github.io/argo-helm
