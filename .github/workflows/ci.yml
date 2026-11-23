@@ -193,6 +193,7 @@ jobs:
         helm/prometheus-operator-crds/test-chart
         helm/prometheus/test-chart
         helm/k8s-monitoring/test-chart
+        helm/grafana/test-chart
         helm/argo-cd/test-chart
         helm/argocd-image-updater/test-chart
       promtool-rules: |
