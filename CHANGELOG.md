@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/dan-petty/infra/compare/v0.5.0...v0.6.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** give each tenant namespace a backup bucket ([#49](https://github.com/dan-petty/infra/issues/49)) ([32431be](https://github.com/dan-petty/infra/commit/32431beb09eed9aa1abbb714ee579564dc3a9851))
+
 ## [0.5.0](https://github.com/dan-petty/infra/compare/v0.4.0...v0.5.0) (2026-11-23)
 
 
