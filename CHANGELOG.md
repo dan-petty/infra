@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/dan-petty/infra/compare/v0.3.0...v0.4.0) (2026-11-23)
+
+
+### Features
+
+* **ansible:** ship the common role and the generic plays ([#45](https://github.com/dan-petty/infra/issues/45)) ([18c65c5](https://github.com/dan-petty/infra/commit/18c65c59425698722bc1ec981f4f698af6e8c3c6))
+
 ## [0.3.0](https://github.com/dan-petty/infra/compare/v0.2.0...v0.3.0) (2026-11-22)
 
 
