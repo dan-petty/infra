@@ -83,6 +83,7 @@ jobs:
             tofu:
               - *tools
               - .tflint.hcl
+              - tests/test-trivyignore.sh
               - tf/**
             ansible:
               - *python
@@ -321,6 +322,10 @@ jobs:
             mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL \
               --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' "${vars[@]}" "$example"
           done
+
+      - name: Test trivyignore expiry behavior
+        timeout-minutes: 5
+        run: mise exec -- tests/test-trivyignore.sh
 
       # tofu init downloads the registry modules and the providers of the lock file of each example.
       - name: Validate each example
