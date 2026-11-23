@@ -1,6 +1,6 @@
 # The Azure Verified Modules of tf/modules/azure-aks need OpenTofu 1.11 or later.
 terraform {
-  required_version = ">= 1.11.4"
+  required_version = ">= 1.17.2"
 
   required_providers {
     azapi = {
