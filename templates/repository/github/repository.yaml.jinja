@@ -84,6 +84,11 @@ rulesets:
       - type: code_quality
         parameters:
           severity: errors
+{%- if code_coverage %}
+      - type: code_coverage
+        parameters:
+          minimum_coverage: 80
+{%- endif %}
 {%- if release_flow %}
 
 # PUT /repos/{owner}/{repo}/environments/{name}, then the deployment branch policies and the

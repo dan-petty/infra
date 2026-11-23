@@ -146,6 +146,18 @@ check "defaults: renovate-config-validator --strict" npx --yes --package "renova
   -- renovate-config-validator --strict "$work/defaults/.github/renovate.json"
 expect "defaults: infra_ref is not in .copier-answers.yml" "null" \
   "$(yq -r '.infra_ref' "$work/defaults/.copier-answers.yml")"
+expect "defaults: code_coverage is false in .copier-answers.yml" "false" \
+  "$(yq -r '.code_coverage' "$work/defaults/.copier-answers.yml")"
+expect "defaults: no code_coverage rule" "0" \
+  "$(yq -r '[.rulesets[0].rules[] | select(.type == "code_coverage")] | length' "$work/defaults/github/repository.yaml")"
+
+# With code_coverage=true, the rendered ruleset holds the code_coverage rule with minimum_coverage: 80.
+render coverage code_coverage=true
+validate coverage
+expect "coverage: code_coverage is true in .copier-answers.yml" "true" \
+  "$(yq -r '.code_coverage' "$work/coverage/.copier-answers.yml")"
+expect "coverage: minimum_coverage is 80" "80" \
+  "$(yq -r '.rulesets[0].rules[] | select(.type == "code_coverage") | .parameters.minimum_coverage' "$work/coverage/github/repository.yaml")"
 
 # With no answer infra_ref, the callers pin _commit, the version of infra that Copier renders.
 check "commit: copier copy" copier copy --quiet --defaults --vcs-ref HEAD "$root" "$work/commit"
