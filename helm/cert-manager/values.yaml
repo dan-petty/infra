@@ -1,0 +1,69 @@
+# cert-manager Helm values template (#16).
+# Chart: jetstack/cert-manager (v1.21.3)
+# Repo:  https://charts.jetstack.io
+#
+# cert-manager issues TLS certificates. The chart's pods meet Pod Security restricted:
+# non-root, RuntimeDefault seccomp profile, no privilege escalation, all capabilities dropped
+# and a read-only root file system.
+
+crds:
+  enabled: true
+  keep: true
+
+global:
+  leaderElection:
+    namespace: cert-manager
+
+strategy:
+  type: RollingUpdate
+
+deploymentAnnotations:
+  ignore-check.kube-linter.io/no-readiness-probe: "cert-manager controller provides healthz liveness probe only"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+webhook:
+  strategy:
+    type: RollingUpdate
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+cainjector:
+  strategy:
+    type: RollingUpdate
+  deploymentAnnotations:
+    ignore-check.kube-linter.io/no-liveness-probe: >-
+      cert-manager cainjector does not serve traffic or provide health endpoints
+    ignore-check.kube-linter.io/no-readiness-probe: >-
+      cert-manager cainjector does not serve traffic or provide health endpoints
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+startupapicheck:
+  ttlSecondsAfterFinished: 60
+  jobAnnotations:
+    ignore-check.kube-linter.io/no-liveness-probe: "startupapicheck is a short-lived post-install validation job"
+    ignore-check.kube-linter.io/no-readiness-probe: "startupapicheck is a short-lived post-install validation job"
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi

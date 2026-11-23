@@ -28,6 +28,8 @@ The unit tests of the template are in `test-chart/tests/`.
 | [`cloudnative-pg`](cloudnative-pg/values.yaml) | `cloudnative-pg` 0.29.2 from `https://cloudnative-pg.github.io/charts` | CloudNativePG operator: rolling update strategy, non-root security context, requests and limits. | dan-petty/homelab#93. |
 | [`plugin-barman-cloud`](plugin-barman-cloud/values.yaml) | `plugin-barman-cloud` 0.9.0 from `https://cloudnative-pg.github.io/charts` | Barman Cloud plugin: non-root security context, requests and limits. | dan-petty/homelab#93. |
 | [`argo-workflows`](argo-workflows/values.yaml) | `argo-workflows` 2.0.18 from `oci://ghcr.io/argoproj/argo-helm` | Argo Workflows controller: controller deployment, non-root security context, requests and limits. | dan-petty/homelab#93. |
+| [`cert-manager`](cert-manager/values.yaml) | `cert-manager` v1.21.3 from `https://charts.jetstack.io` | cert-manager certificate controller: CRDs, non-root security context, requests and limits. | dan-petty/homelab#89. |
+| [`traefik`](traefik/values.yaml) | `traefik` 42.3.2 from `https://traefik.github.io/charts` | Traefik ingress controller: ClusterIP service, non-root security context, requests and limits. | dan-petty/homelab#89. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
@@ -57,3 +59,7 @@ admits only its finding on its object.
 | KSV-0041 | ClusterRole `plugin-barman-cloud`: the plugin accesses object store credentials stored in Secrets. | 2026-12-23 |
 | KSV-0041 | ClusterRole `argo-workflows-workflow-controller`: the workflow controller reads CA certificate Secrets. | 2026-12-23 |
 | KSV-0053 | ClusterRole `argo-workflows-workflow-controller`: the workflow controller executes commands in step pods to monitor processes. | 2026-12-23 |
+| KSV-0041 | ClusterRole `traefik-argocd`: Traefik reads TLS certificate Secrets for Ingress TLS termination. | 2026-12-23 |
+| KSV-0041 | ClusterRoles `cert-manager-*`: the controller and cainjector manage TLS certificate and challenge Secrets. | 2026-12-23 |
+| KSV-0114 | ClusterRole `cert-manager-cainjector`: the cainjector updates mutating and validating webhook configurations to inject CA bundles. | 2026-12-23 |
+| KSV-0056 | ClusterRole `cert-manager-controller-challenges`: the challenges controller manages temporary solver Services and Ingresses. | 2026-12-23 |

@@ -89,3 +89,35 @@ misconfigurations:
     statement: >-
       The Argo Workflows workflow controller executes commands in step pods to monitor processes (dan-petty/infra#18)
     expired_at: 2026-12-23
+  # Traefik ingress controller reads TLS certificates from Secrets.
+  - id: KSV-0041
+    paths:
+      - "*-helm-traefik/ClusterRole-traefik-*.yaml"
+    statement: >-
+      Traefik reads TLS Secrets for Ingress TLS termination; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#16)
+    expired_at: 2026-12-23
+  # cert-manager controller and cainjector manage certificate and challenge Secrets.
+  - id: KSV-0041
+    paths:
+      - "*-helm-cert-manager/ClusterRole-cert-manager-*.yaml"
+    statement: >-
+      cert-manager controller and cainjector manage certificate and challenge Secrets; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#16)
+    expired_at: 2026-12-23
+  # cert-manager cainjector updates webhook configurations to inject CA bundles.
+  - id: KSV-0114
+    paths:
+      - "*-helm-cert-manager/ClusterRole-cert-manager-cainjector.yaml"
+    statement: >-
+      cert-manager cainjector updates webhook configurations to inject CA bundles; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#16)
+    expired_at: 2026-12-23
+  # cert-manager challenges controller manages solver services and ingresses for HTTP-01 challenges.
+  - id: KSV-0056
+    paths:
+      - "*-helm-cert-manager/ClusterRole-cert-manager-controller-challenges.yaml"
+    statement: >-
+      cert-manager challenges controller manages solver services and
+      ingresses for HTTP-01 challenges (dan-petty/infra#16)
+    expired_at: 2026-12-23
