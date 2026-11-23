@@ -2,7 +2,7 @@
 # module gives a lower bound only; the root module of the consumer pins the exact provider version
 # (tf/examples/azure).
 terraform {
-  required_version = ">= 1.11"
+  required_version = ">= 1.11.4"
 
   required_providers {
     azapi = {
