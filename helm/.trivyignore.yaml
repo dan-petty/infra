@@ -121,3 +121,32 @@ misconfigurations:
       cert-manager challenges controller manages solver services and
       ingresses for HTTP-01 challenges (dan-petty/infra#16)
     expired_at: 2026-12-23
+  # kube-state-metrics lists and watches Secrets to produce kube_secret_info metrics.
+  - id: KSV-0041
+    paths:
+      - "*-helm-k8s-monitoring/ClusterRole-k8s-monitoring-kube-state-metrics.yaml"
+    statement: >-
+      kube-state-metrics reads Secrets to report kube_secret_info telemetry; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#78)
+    expired_at: 2026-12-23
+  # node-exporter requires host networking to collect node network metrics.
+  - id: KSV-0009
+    paths:
+      - "*-helm-k8s-monitoring/*/DaemonSet-k8s-monitoring-node-exporter.yaml"
+    statement: >-
+      node-exporter requires host networking to collect node network metrics (dan-petty/infra#78)
+    expired_at: 2026-12-23
+  # node-exporter requires host PID namespace to collect host process metrics.
+  - id: KSV-0010
+    paths:
+      - "*-helm-k8s-monitoring/*/DaemonSet-k8s-monitoring-node-exporter.yaml"
+    statement: >-
+      node-exporter requires host PID namespace to collect host process metrics (dan-petty/infra#78)
+    expired_at: 2026-12-23
+  # node-exporter mounts host filesystems to collect host metrics.
+  - id: KSV-0121
+    paths:
+      - "*-helm-k8s-monitoring/*/DaemonSet-k8s-monitoring-node-exporter.yaml"
+    statement: >-
+      node-exporter mounts host filesystems to collect host metrics (dan-petty/infra#78)
+    expired_at: 2026-12-23

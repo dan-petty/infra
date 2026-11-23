@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/dan-petty/infra/compare/v0.14.0...v0.15.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Prometheus and k8s-monitoring values templates ([#82](https://github.com/dan-petty/infra/issues/82)) ([c679d8d](https://github.com/dan-petty/infra/commit/c679d8d7f3d12f3f9bab220d0b216aad9a1412c2)), closes [#78](https://github.com/dan-petty/infra/issues/78)
+
 ## [0.14.0](https://github.com/dan-petty/infra/compare/v0.13.0...v0.14.0) (2026-11-23)
 
 
