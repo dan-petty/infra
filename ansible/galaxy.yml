@@ -10,7 +10,7 @@ license:
 tags:
   - infrastructure
 dependencies:
-  ansible.posix: '>=2.0.0'
+  ansible.posix: '>=2.2.2'
   community.general: '>=10.0.0'
 repository: https://github.com/dan-petty/infra
 issues: https://github.com/dan-petty/infra/issues
