@@ -1,0 +1,11 @@
+apiVersion: v2
+name: test-chart
+description: >-
+  The test chart of the values template helm/otel-collector/values.yaml. It pins the upstream
+  chart opentelemetry-collector at one exact version.
+type: application
+version: 0.1.0
+dependencies:
+  - name: opentelemetry-collector
+    version: 0.178.3
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts

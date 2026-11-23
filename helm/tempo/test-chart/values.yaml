@@ -1,0 +1,3 @@
+# The test chart has no values of its own. scripts/k8s-validate.sh gives the values template
+# ../values.yaml to the dependency tempo (helm/README.md).
+{}

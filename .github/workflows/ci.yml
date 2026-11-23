@@ -186,6 +186,9 @@ jobs:
         helm/argo-workflows/test-chart
         helm/cert-manager/test-chart
         helm/traefik/test-chart
+        helm/loki/test-chart
+        helm/otel-collector/test-chart
+        helm/tempo/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
       trivy-ignorefile: helm/.trivyignore.yaml

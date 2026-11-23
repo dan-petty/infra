@@ -30,6 +30,9 @@ The unit tests of the template are in `test-chart/tests/`.
 | [`argo-workflows`](argo-workflows/values.yaml) | `argo-workflows` 2.0.18 from `oci://ghcr.io/argoproj/argo-helm` | Argo Workflows controller: controller deployment, non-root security context, requests and limits. | dan-petty/homelab#93. |
 | [`cert-manager`](cert-manager/values.yaml) | `cert-manager` v1.21.3 from `https://charts.jetstack.io` | cert-manager certificate controller: CRDs, non-root security context, requests and limits. | dan-petty/homelab#89. |
 | [`traefik`](traefik/values.yaml) | `traefik` 42.3.2 from `https://traefik.github.io/charts` | Traefik ingress controller: ClusterIP service, non-root security context, requests and limits. | dan-petty/homelab#89. |
+| [`loki`](loki/values.yaml) | `loki` 21.2.3 from `https://grafana-community.github.io/helm-charts` | Loki log aggregation service in Monolithic mode: TSDB storage, non-root security context, rolling update strategy, requests and limits. | dan-petty/homelab#93. |
+| [`otel-collector`](otel-collector/values.yaml) | `opentelemetry-collector` 0.178.3 from `https://open-telemetry.github.io/opentelemetry-helm-charts` | OpenTelemetry Collector deployment: non-root security context, read-only root filesystem, health check port, requests and limits. | dan-petty/homelab#93. |
+| [`tempo`](tempo/values.yaml) | `tempo` 3.2.1 from `https://grafana-community.github.io/helm-charts` | Grafana Tempo single-binary mode: non-root security context, read-only root filesystem, requests and limits. | dan-petty/homelab#93. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
