@@ -1,0 +1,43 @@
+# The tests of the values template ../values.yaml. scripts/k8s-validate.sh gives the template to
+# the dependency pyroscope with --values (helm/README.md).
+suite: The values template of pyroscope
+templates:
+  - charts/pyroscope/templates/configmap.yaml
+  - charts/pyroscope/templates/deployments-statefulsets.yaml
+release:
+  name: pyroscope
+tests:
+  - it: runs the pod with non-root security context
+    template: charts/pyroscope/templates/deployments-statefulsets.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            fsGroup: 10001
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
+  - it: runs the container with dropped capabilities and read-only root filesystem
+    template: charts/pyroscope/templates/deployments-statefulsets.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+  - it: gives the container resource requests and limits
+    template: charts/pyroscope/templates/deployments-statefulsets.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1024Mi
