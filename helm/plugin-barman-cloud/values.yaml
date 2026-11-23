@@ -1,0 +1,29 @@
+# Barman Cloud Plugin Helm Chart Values Template
+# Chart: plugin-barman-cloud (0.9.0)
+# Repo:  https://cloudnative-pg.github.io/charts
+
+commonAnnotations:
+  ignore-check.kube-linter.io/no-rolling-update-strategy: "Single replica plugin uses default or Recreate strategy"
+  ignore-check.kube-linter.io/liveness-port: "Probe port is exposed on probe endpoint"
+  ignore-check.kube-linter.io/readiness-port: "Probe port is exposed on probe endpoint"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

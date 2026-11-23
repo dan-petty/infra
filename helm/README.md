@@ -24,6 +24,10 @@ The unit tests of the template are in `test-chart/tests/`.
 | Template | Upstream chart | Content | Consumers |
 | --- | --- | --- | --- |
 | [`external-secrets`](external-secrets/values.yaml) | `external-secrets` 2.15.0 from `oci://ghcr.io/external-secrets/charts` | External Secrets Operator with its CRDs and the `PushSecret` controller: the Pod Security level `restricted`, requests, limits and probes, the metrics port 8080, the webhook port 10250, and one NetworkPolicy of the type `Ingress` for each pod (devops-cli ADR 0033). | dan-petty/homelab#82. |
+| [`gitea`](gitea/values.yaml) | `gitea` 12.7.0 from `oci://docker.gitea.com/charts` | Gitea git service: SQLite database, non-root security context, persistent storage protection, requests and limits. | dan-petty/homelab#93. |
+| [`cloudnative-pg`](cloudnative-pg/values.yaml) | `cloudnative-pg` 0.29.2 from `https://cloudnative-pg.github.io/charts` | CloudNativePG operator: rolling update strategy, non-root security context, requests and limits. | dan-petty/homelab#93. |
+| [`plugin-barman-cloud`](plugin-barman-cloud/values.yaml) | `plugin-barman-cloud` 0.9.0 from `https://cloudnative-pg.github.io/charts` | Barman Cloud plugin: non-root security context, requests and limits. | dan-petty/homelab#93. |
+| [`argo-workflows`](argo-workflows/values.yaml) | `argo-workflows` 2.0.18 from `oci://ghcr.io/argoproj/argo-helm` | Argo Workflows controller: controller deployment, non-root security context, requests and limits. | dan-petty/homelab#93. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
@@ -46,3 +50,10 @@ admits only its finding on its object.
 | KSV-0041 | ClusterRole `external-secrets-controller`: the controller writes the Secret of each ExternalSecret in each namespace. | 2026-12-22 |
 | KSV-0041 | ClusterRole `external-secrets-cert-controller`: the cert-controller writes the certificate Secret of the webhook. | 2026-12-22 |
 | KSV-0114 | ClusterRole `external-secrets-cert-controller`: the cert-controller writes the CA bundle into the ValidatingWebhookConfigurations of ESO. | 2026-12-22 |
+| KSV-0041 | ClusterRole `cloudnative-pg`: the operator manages Secrets for Postgres credentials and certificates. | 2026-12-23 |
+| KSV-0053 | ClusterRole `cloudnative-pg`: the operator executes commands in PostgreSQL pods to manage failover and replication. | 2026-12-23 |
+| KSV-0056 | ClusterRole `cloudnative-pg`: the operator manages Services and NetworkPolicies for clusters. | 2026-12-23 |
+| KSV-0114 | ClusterRole `cloudnative-pg`: the operator updates webhook configurations for its admission webhook. | 2026-12-23 |
+| KSV-0041 | ClusterRole `plugin-barman-cloud`: the plugin accesses object store credentials stored in Secrets. | 2026-12-23 |
+| KSV-0041 | ClusterRole `argo-workflows-workflow-controller`: the workflow controller reads CA certificate Secrets. | 2026-12-23 |
+| KSV-0053 | ClusterRole `argo-workflows-workflow-controller`: the workflow controller executes commands in step pods to monitor processes. | 2026-12-23 |

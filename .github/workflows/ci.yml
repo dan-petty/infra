@@ -175,6 +175,10 @@ jobs:
         charts/example
         charts/service-tenant
         helm/external-secrets/test-chart
+        helm/gitea/test-chart
+        helm/cloudnative-pg/test-chart
+        helm/plugin-barman-cloud/test-chart
+        helm/argo-workflows/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
       trivy-ignorefile: helm/.trivyignore.yaml

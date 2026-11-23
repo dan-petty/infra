@@ -1,0 +1,30 @@
+# CloudNativePG Helm Chart Values Template
+# Chart: cloudnative-pg (0.29.2)
+# Repo:  https://cloudnative-pg.github.io/charts
+
+crds:
+  create: true
+
+updateStrategy:
+  type: RollingUpdate
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
