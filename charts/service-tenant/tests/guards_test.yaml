@@ -246,3 +246,16 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "properties 'name' required, if 'secrets' exists"
+  - it: refuses backup.quotaGiB when secrets.store is false
+    values:
+      - ../ci/test-values.yaml
+    set:
+      namespaces:
+        - name: example
+          backup:
+            quotaGiB: 10
+      secrets:
+        store: false
+    asserts:
+      - failedTemplate:
+          errorPattern: secrets\.store

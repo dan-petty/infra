@@ -8,7 +8,6 @@ namespaces:
   - name: example
   - name: example-db
     podSecurity: baseline
-    backup: true
 images:
   - alias: web
     image: registry.example.com/example/web

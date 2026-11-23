@@ -18,7 +18,7 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     # The monitoring perimeter admits each namespace with this label, and names no service.
     monitoring-scrape: "true"
-    {{- if .backup }}
+    {{- if and .backup .backup.quotaGiB }}
     # The perimeter of the object store admits each namespace with this label to its S3 port.
     backup-client: "true"
     {{- end }}

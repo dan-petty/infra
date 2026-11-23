@@ -45,7 +45,8 @@ limitRange:
 # namespaces:
 #   - name: example
 #     podSecurity: restricted
-#     backup: false
+#     backup:
+#       quotaGiB: 10
 # images: []
 # extraKinds: []
 # secrets:

@@ -52,7 +52,13 @@ tests:
       - equal:
           path: metadata.labels["pod-security.kubernetes.io/audit"]
           value: restricted
-  - it: gives the label backup-client only to a namespace with backup true
+  - it: gives the label backup-client only to a namespace with backup quota
+    set:
+      namespaces:
+        - name: example
+        - name: example-db
+          backup:
+            quotaGiB: 10
     asserts:
       - notExists:
           path: metadata.labels["backup-client"]

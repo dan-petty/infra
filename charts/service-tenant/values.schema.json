@@ -93,8 +93,17 @@
             "enum": ["restricted", "baseline"]
           },
           "backup": {
-            "description": "true gives the namespace the label backup-client, which opens the object store to it.",
-            "type": "boolean"
+            "description": "The backup bucket of the namespace: its quota in GiB. The secret store (secrets.store) is required.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["quotaGiB"],
+            "properties": {
+              "quotaGiB": {
+                "description": "The quota of the backup bucket in GiB.",
+                "type": "integer",
+                "minimum": 1
+              }
+            }
           }
         }
       }

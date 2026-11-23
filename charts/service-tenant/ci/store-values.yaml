@@ -8,6 +8,7 @@ namespaces:
   - name: example
   - name: example-db
     podSecurity: baseline
-    backup: true
+    backup:
+      quotaGiB: 10
 secrets:
   store: true

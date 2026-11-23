@@ -1,0 +1,177 @@
+{{- /*
+The backup bucket and credentials of each namespace with backup.quotaGiB.
+The store resources and the client key live in object-store because seaweedfs-operator watches only
+that namespace. When any namespace sets backup.quotaGiB, the chart renders the store SecretStore
+and eso-store ServiceAccount in object-store, and a RoleBinding in <name>-secrets. For each
+backup namespace, the chart renders the store set (Bucket, S3Identity, S3Policy, S3PolicyBinding,
+S3Credentials) through the reusable template service-tenant.backupStore, two Password generators, one
+materializing ExternalSecret, one PushSecret to remote key <namespace>.object-store-backup, and one
+read-back ExternalSecret in the tenant namespace.
+*/ -}}
+{{- if .Values.name }}
+{{- $backups := list }}
+{{- range .Values.namespaces }}
+  {{- if and .backup .backup.quotaGiB }}
+    {{- $backups = append $backups . }}
+  {{- end }}
+{{- end }}
+{{- if $backups }}
+{{- $store := include "service-tenant.storeNamespace" . }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-store
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: store
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" . | nindent 4 }}
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: {{ $store }}
+      server:
+        url: https://kubernetes.default.svc
+        caProvider:
+          type: ConfigMap
+          name: kube-root-ca.crt
+          key: ca.crt
+      auth:
+        serviceAccount:
+          name: eso-store
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eso-store-object-store
+  namespace: {{ $store }}
+  labels:
+    {{- include "service-tenant.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: eso-store
+subjects:
+  - kind: ServiceAccount
+    name: eso-store
+    namespace: object-store
+{{- range $backups }}
+{{- $secretName := "object-store-backup" }}
+{{- if gt (len $backups) 1 }}
+{{- $secretName = printf "%s-object-store-backup" .name }}
+{{- end }}
+{{- include "service-tenant.backupStore" (dict "namespace" .name "quotaGiB" .backup.quotaGiB "secretName" $secretName "root" $) }}
+---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: backup-{{ .name }}-access-key
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  length: 24
+  allowRepeat: true
+  noUpper: false
+  secretKeys:
+    - accessKey
+---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: backup-{{ .name }}-secret-key
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  length: 40
+  allowRepeat: true
+  noUpper: false
+  secretKeys:
+    - secretKey
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: backup-{{ .name }}
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  refreshInterval: "0"
+  target:
+    name: {{ $secretName }}
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: backup-{{ .name }}-access-key
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: backup-{{ .name }}-secret-key
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: backup-{{ .name }}
+  namespace: object-store
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: store
+      kind: SecretStore
+  selector:
+    secret:
+      name: {{ $secretName }}
+  data:
+    - match:
+        secretKey: accessKey
+        remoteRef:
+          remoteKey: {{ .name }}.object-store-backup
+          property: accessKey
+    - match:
+        secretKey: secretKey
+        remoteRef:
+          remoteKey: {{ .name }}.object-store-backup
+          property: secretKey
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: object-store-backup
+  namespace: {{ .name }}
+  labels:
+    {{- include "service-tenant.labels" $ | nindent 4 }}
+spec:
+  secretStoreRef:
+    name: store
+    kind: SecretStore
+  target:
+    name: object-store-backup
+    creationPolicy: Owner
+  data:
+    - secretKey: accessKey
+      remoteRef:
+        key: {{ .name }}.object-store-backup
+        property: accessKey
+    - secretKey: secretKey
+      remoteRef:
+        key: {{ .name }}.object-store-backup
+        property: secretKey
+{{- end }}
+{{- end }}
+{{- end }}
