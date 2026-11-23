@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/dan-petty/infra/compare/v0.12.0...v0.12.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **tf:** track the trivy judgments AWS-0104 and GCP-0057 ([#70](https://github.com/dan-petty/infra/issues/70)) ([c1ef612](https://github.com/dan-petty/infra/commit/c1ef612891f74f2890b9975741464cf6f7e97fc0)), closes [#30](https://github.com/dan-petty/infra/issues/30)
+
 ## [0.12.0](https://github.com/dan-petty/infra/compare/v0.11.0...v0.12.0) (2026-11-23)
 
 
