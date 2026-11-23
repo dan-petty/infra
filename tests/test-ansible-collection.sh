@@ -66,6 +66,15 @@ skips_each_host() {
   fi
 }
 
+# has_target_hosts PLAY: the play takes its hosts from target_hosts and has no literal host or group.
+has_target_hosts() {
+  local play="$1"
+  grep -qE '^[[:space:]]*hosts:[[:space:]]*["'\'']?\{\{[[:space:]]*target_hosts[[:space:]]*\}\}["'\'']?[[:space:]]*$' "$play" || {
+    echo "The play $play does not take hosts from target_hosts."
+    return 1
+  }
+}
+
 check "build the collection" ansible-galaxy collection build "$root/ansible" --output-path "$work/build"
 archive="$(find "$work/build" -name 'dan_petty-infra-*.tar.gz' -print -quit 2>/dev/null)"
 check "install the archive" ansible-galaxy collection install "${archive:-no-archive}" -p "$work/collections"
@@ -75,6 +84,7 @@ for play in "$root"/ansible/playbooks/*.yml; do
   name="$(basename "$play" .yml)"
   check "syntax of the play $name" \
     ansible-playbook --syntax-check -i "$inventory" -e target_hosts=all "dan_petty.infra.$name"
+  check "host variable of $name" has_target_hosts "$play"
 done
 
 for role in "$root"/ansible/roles/*/; do

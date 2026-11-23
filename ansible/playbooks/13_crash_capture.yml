@@ -1,0 +1,347 @@
+---
+# 13_crash_capture.yml — Make a host crash leave a kernel log that survives the reboot.
+# The play has no default host: ansible-playbook dan_petty.infra.13_crash_capture -e target_hosts=<group>.
+#
+# This play sets up these ways to keep the last messages and to end a hang:
+#
+#   1. kdump: on a kernel panic, a second kernel saves the crash dump to /var/crash. The kernel reserves
+#      memory for the kdump kernel at boot (`crashkernel=` on the kernel line, `crash_kernel_reservation`).
+#      The kdump kernel line blocks the GPU drivers. The play fails when the kdump kernel and initrd do not
+#      fit in the reservation, or when kdump-tools cannot load them.
+#   2. A panic on an Oops, a soft lockup, a hard lockup and an RCU stall, so that kdump runs for each
+#      (alone, each lets the host go on, hang or reset with no dump).
+#   3. netconsole: the kernel log goes by UDP to another host. Only with `crash_netconsole_receiver`.
+#   4. A persistent journal that writes to disk every few seconds, not every five minutes.
+#   5. The hardware watchdog: systemd pets it, so a host that hangs completely resets after
+#      `crash_watchdog_sec`.
+#
+# It also installs dmidecode (BIOS version and board data) and enables systemd-pstore, which saves
+# the files of /sys/fs/pstore on the next boot.
+#
+# It does not reboot. A new crash reservation needs one reboot: the kernel reserves the memory only at
+# boot. Until that reboot, the play skips the kdump checks and tells you to reboot. A change to the kdump
+# initrd or to the kdump kernel line needs no reboot: the play builds the kdump initrd again and restarts
+# kdump-tools. The play prints the checks to run after the reboot. It is safe to run twice.
+#
+# Variables (all optional). Set them in host_vars or with -e:
+#   crash_kernel_reservation: 512M-:192M
+#                                       Memory for the kdump kernel (`crashkernel=`). The default is the value of
+#                                       the kdump-tools package.
+#   crash_netconsole_receiver: ""       IPv4 address of the host that receives the log. Without it, no netconsole.
+#   crash_netconsole_receiver_mac: ""   MAC address of the receiver. Without it, the log goes to the broadcast address.
+#   crash_netconsole_port: 6666         UDP port of the receiver.
+#   crash_netconsole_source_port: 6665  UDP port of the sender.
+#   crash_journal_sync: 10s             How often the journal writes to disk.
+#   crash_watchdog_sec: 60s             The hardware watchdog resets a host that hangs this long.
+#   crash_kdump_cmdline_append: ...     Arguments that kdump-tools adds to the kdump kernel line.
+#
+# Receive the log on the other host:  nc -u -l 6666 | tee node-netconsole.log
+- name: Keep the kernel log of a host crash
+  hosts: "{{ target_hosts }}"
+  become: true
+  gather_facts: true
+  gather_subset:
+    - "!all"
+    - "!min"
+    - network
+  # Play vars win over host_vars. Thus each play variable here has a name that is not in the list above,
+  # and reads the variable of the list with default().
+  vars:
+    # The default is the value of the kdump-tools package (/etc/default/grub.d/kdump-tools.cfg).
+    crash_kernel: "{{ crash_kernel_reservation | default('512M-:192M') }}"
+    crash_receiver: "{{ crash_netconsole_receiver | default('') }}"
+    crash_receiver_mac: "{{ crash_netconsole_receiver_mac | default('') }}"
+    crash_receiver_port: "{{ crash_netconsole_port | default(6666) }}"
+    crash_source_port: "{{ crash_netconsole_source_port | default(6665) }}"
+    crash_journal_interval: "{{ crash_journal_sync | default('10s') }}"
+    crash_watchdog_timeout: "{{ crash_watchdog_sec | default('60s') }}"
+    crash_kdump_append: "{{ crash_kdump_cmdline_append | default(crash_kdump_append_default) }}"
+    # The package default of KDUMP_CMDLINE_APPEND (/etc/default/kdump-tools), then two additions for the
+    # kdump kernel. module_blacklist: the kdump kernel must not load the GPU drivers. The kdump initrd
+    # holds them, and udev can load them from the root file system, where the dump runs. A GPU driver and
+    # its firmware use much memory, and the kdump kernel needs no GPU. plymouth.enable=0: no boot splash.
+    crash_kdump_append_default: >-
+      reset_devices systemd.unit=kdump-tools-dump.service nr_cpus=1 irqpoll usbcore.nousb
+      module_blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm,nvidia_peermem,nouveau,nova_core
+      plymouth.enable=0
+  handlers:
+    - name: Regenerate GRUB
+      ansible.builtin.command: update-grub
+      changed_when: true
+
+    - name: Restart the journal
+      ansible.builtin.systemd:
+        name: systemd-journald
+        state: restarted
+
+    - name: Reexecute systemd
+      ansible.builtin.systemd:
+        daemon_reexec: true
+
+    - name: Reload netconsole
+      ansible.builtin.shell: modprobe -r netconsole; modprobe netconsole
+      changed_when: true
+
+    # The script of the kdump-tools package that builds the kdump initrd when a kernel is installed. The
+    # kdump-tools service builds it only when it is missing.
+    - name: Build the kdump initrd again
+      ansible.builtin.shell: /etc/kernel/postinst.d/kdump-tools "$(uname -r)"
+      changed_when: true
+
+    # Stop unloads the kdump kernel; start loads the kdump kernel and initrd again.
+    - name: Restart kdump-tools
+      ansible.builtin.systemd:
+        name: kdump-tools
+        state: restarted
+
+  tasks:
+    # Step 1: packages. The debconf answer stops the kdump-tools install from asking a question.
+    - name: Answer the kdump-tools question (enable kdump)
+      ansible.builtin.debconf:
+        name: kdump-tools
+        question: kdump-tools/use_kdump
+        vtype: boolean
+        value: "true"
+
+    - name: Install the crash tools
+      ansible.builtin.apt:
+        name:
+          - dmidecode
+          - kdump-tools
+          - kexec-tools
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      register: crash_packages
+      notify: Regenerate GRUB
+
+    # Step 1b: the crash reservation. The kdump-tools package adds crashkernel=512M-:192M (192 MiB) in
+    # /etc/default/grub.d/kdump-tools.cfg. grub-mkconfig reads the files of /etc/default/grub.d in C sort
+    # order, so this file comes after kdump-tools.cfg. It removes the crashkernel= value of that file and
+    # adds crash_kernel_reservation. The file of the package does not change, so a package upgrade does
+    # not undo the value. The new value takes effect at the next boot.
+    - name: Set the crash reservation on the kernel line
+      ansible.builtin.copy:
+        dest: /etc/default/grub.d/zz-crashkernel.cfg
+        mode: "0644"
+        validate: sh -n %s
+        content: |
+          # Managed by Ansible (13_crash_capture.yml): the memory for the kdump kernel. grub-mkconfig reads
+          # this file after kdump-tools.cfg. It removes the crashkernel= value of that file and adds this one.
+          GRUB_CMDLINE_LINUX_DEFAULT="$(printf '%s\n' "${GRUB_CMDLINE_LINUX_DEFAULT}" |
+            sed 's/ *crashkernel=[^ ]*//g') crashkernel={{ crash_kernel }}"
+      notify: Regenerate GRUB
+
+    # Remove obsolete hook if present
+    - name: Remove the initramfs hook that did not keep the GPU files out of the kdump initrd
+      ansible.builtin.file:
+        path: /etc/initramfs-tools/hooks/kdump-no-gpu
+        state: absent
+      notify:
+        - Build the kdump initrd again
+        - Restart kdump-tools
+
+    # In check mode on a host with no kdump-tools yet, the apt task installs nothing, so the file is missing.
+    - name: Keep the GPU drivers and the boot splash out of the kdump kernel
+      ansible.builtin.lineinfile:
+        path: /etc/default/kdump-tools
+        regexp: '^#?KDUMP_CMDLINE_APPEND='
+        line: 'KDUMP_CMDLINE_APPEND="{{ crash_kdump_append }}"'
+      when: not (ansible_check_mode and crash_packages.changed)
+      notify: Restart kdump-tools
+
+    # Step 2: kernel settings. printk 7 sends every level to the console and to netconsole.
+    # panic_on_rcu_stall covers the expedited stall too: the kernel calls panic_on_rcu_stall()
+    # in synchronize_rcu_expedited_wait() after the stall report.
+    # kernel.panic is 10: the kubelet sets kernel.panic=10 and kernel.panic_on_oops=1 when it starts
+    # (protectKernelDefaults is false in k3s). With another value, the play and the kubelet change it back
+    # and forth.
+    - name: Panic on an Oops, a soft or hard lockup and an RCU stall, so that kdump runs
+      ansible.posix.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        sysctl_file: /etc/sysctl.d/90-crash.conf
+        state: present
+        reload: true
+      loop:
+        - { name: kernel.panic_on_oops, value: "1" }
+        - { name: kernel.softlockup_panic, value: "1" }
+        - { name: kernel.hardlockup_panic, value: "1" }
+        - { name: kernel.panic_on_rcu_stall, value: "1" }
+        - { name: kernel.printk, value: "7 4 1 7" }
+        - { name: kernel.panic, value: "10" }
+      loop_control:
+        label: "{{ item.name }}"
+
+    # The copy module does not make a missing parent directory, and Debian ships neither of these.
+    - name: Make the systemd drop-in directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /etc/systemd/system.conf.d
+        - /etc/systemd/journald.conf.d
+
+    # Step 2b: the hardware watchdog. systemd pets it every half period. When the
+    # whole host hangs, nothing pets it, and the board resets the host.
+    - name: Let systemd pet the hardware watchdog
+      ansible.builtin.copy:
+        dest: /etc/systemd/system.conf.d/90-watchdog.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible: reset a host that hangs completely.
+          [Manager]
+          RuntimeWatchdogSec={{ crash_watchdog_timeout }}
+      notify: Reexecute systemd
+
+    # Step 3: a journal that survives. Storage=persistent keeps the journal on disk;
+    # SyncIntervalSec writes it often, so the last seconds before a stop are on disk.
+    - name: Keep the journal on disk and write it often
+      ansible.builtin.copy:
+        dest: /etc/systemd/journald.conf.d/90-crash.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible: keep the last messages before a crash.
+          [Journal]
+          Storage=persistent
+          SyncIntervalSec={{ crash_journal_interval }}
+      notify: Restart the journal
+
+    - name: Look for the pstore service
+      ansible.builtin.stat:
+        path: /usr/lib/systemd/system/systemd-pstore.service
+      register: crash_pstore_unit
+
+    - name: Enable systemd-pstore, which saves /sys/fs/pstore on the next boot
+      ansible.builtin.systemd:
+        name: systemd-pstore.service
+        enabled: true
+      when: crash_pstore_unit.stat.exists
+
+    # Step 4: netconsole, only when a receiver is set. The source address and the card are the
+    # default route of the host. A missing receiver MAC address means the broadcast address.
+    - name: Load netconsole at boot, with the receiver
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/90-netconsole.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible: send the kernel log by UDP to {{ crash_receiver }}.
+          options netconsole netconsole={{
+            crash_source_port }}@{{ ansible_facts.default_ipv4.address }}/{{
+            ansible_facts.default_ipv4.interface }},{{
+            crash_receiver_port }}@{{ crash_receiver }}/{{ crash_receiver_mac }}
+      when: crash_receiver | length > 0
+      notify: Reload netconsole
+
+    - name: Load the netconsole module at boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/netconsole.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible
+          netconsole
+      when: crash_receiver | length > 0
+
+    - name: Say that no netconsole receiver is set
+      ansible.builtin.debug:
+        msg: >-
+          crash_netconsole_receiver is empty, so netconsole is not set up. Set it in
+          host_vars or pass -e crash_netconsole_receiver=<ip>.
+      when: crash_receiver | length == 0
+
+    # Step 4b: check that kdump is armed. The handlers run first, so the checks read the new kdump
+    # initrd and the state after the restart of kdump-tools. The kernel reserves the crash memory only
+    # at boot. Until a reboot puts crashkernel=<crash_kernel_reservation> on the kernel line of the
+    # running kernel, the old reservation applies, so the play skips the checks and tells you to reboot.
+    # Check mode changes nothing, so it only shows the numbers.
+    - name: Run the handlers now, so that the checks read the new kdump state
+      ansible.builtin.meta: flush_handlers
+
+    - name: Read the kernel line of the running kernel
+      ansible.builtin.command: cat /proc/cmdline
+      register: crash_cmdline
+      check_mode: false
+      changed_when: false
+
+    - name: Read the crash reservation, the size of the kdump kernel and initrd, and the load state
+      ansible.builtin.shell: |
+        set -eu
+        size() { stat -L -c %s "$1" 2>/dev/null || echo 0; }
+        printf '{"reserved": %s, "loaded": %s, "kernel": %s, "initrd": %s}\n' \
+          "$(cat /sys/kernel/kexec_crash_size)" "$(cat /sys/kernel/kexec_crash_loaded)" \
+          "$(size /var/lib/kdump/vmlinuz)" "$(size /var/lib/kdump/initrd.img)"
+      register: crash_kdump_read
+      check_mode: false
+      changed_when: false
+
+    # The kernel uses the last crashkernel= of its line. An empty value means no reservation.
+    - name: Keep the kdump numbers and the crashkernel value of the running kernel
+      ansible.builtin.set_fact:
+        crash_kdump: "{{ crash_kdump_read.stdout | from_json }}"
+        crash_kernel_running: >-
+          {{ crash_cmdline.stdout.split() | select('match', 'crashkernel=') | map('replace', 'crashkernel=', '', 1)
+          | list | last | default('') }}
+
+    - name: Show the kdump numbers
+      ansible.builtin.debug:
+        msg: >-
+          Reservation {{ (crash_kdump.reserved / 1048576) | round(1) }} MiB,
+          kdump kernel {{ (crash_kdump.kernel / 1048576) | round(1) }} MiB,
+          kdump initrd {{ (crash_kdump.initrd / 1048576) | round(1) }} MiB,
+          loaded {{ crash_kdump.loaded }}.
+          Running kernel: crashkernel={{ crash_kernel_running }}, play: crashkernel={{ crash_kernel }}.{{-
+            ' Check mode changes nothing, so these are the numbers before the change.' if ansible_check_mode else '' }}
+
+    - name: Check that the kdump kernel and initrd fit in the crash reservation
+      ansible.builtin.assert:
+        that:
+          - crash_kdump.kernel + crash_kdump.initrd < crash_kdump.reserved
+        fail_msg: >-
+          The kdump kernel ({{ crash_kdump.kernel }} bytes) and the kdump initrd ({{ crash_kdump.initrd }} bytes)
+          do not fit in the crash reservation ({{ crash_kdump.reserved }} bytes), so kdump-tools cannot load the
+          kdump kernel. Read the suggested size: sudo kdump-config show. Set crash_kernel_reservation to a
+          larger value in host_vars/{{ inventory_hostname }}.yaml, run the play again and reboot.
+        quiet: true
+      when: not ansible_check_mode and crash_kernel_running == crash_kernel
+
+    - name: Check that kdump-tools loaded the kdump kernel
+      ansible.builtin.assert:
+        that:
+          - crash_kdump.loaded == 1
+        fail_msg: >-
+          kdump-tools did not load the kdump kernel (/sys/kernel/kexec_crash_loaded is 0), so a crash
+          gives no dump. Read: journalctl -b -u kdump-tools --no-pager, and sudo kdump-config show.
+        quiet: true
+      when: not ansible_check_mode and crash_kernel_running == crash_kernel
+
+    # Step 5: report. The play changes nothing here.
+    - name: Tell what is left to do
+      ansible.builtin.debug:
+        msg:
+          - >-
+            {{ 'The running kernel has crashkernel=' ~ crash_kernel ~ ': no reboot needed.'
+            if crash_kernel_running == crash_kernel
+            else 'Reboot ' ~ inventory_hostname ~ '. The running kernel has crashkernel=' ~
+            (crash_kernel_running or '(none)') ~ ', and the play sets crashkernel=' ~
+            crash_kernel ~ '. The kernel reserves this memory only at boot, so the' ~
+            ' play skipped the fit check and the load check. Before the reboot, grep -o ' ~
+            '"crashkernel=[^ ]*" /boot/grub/grub.cfg must show crashkernel=' ~
+            crash_kernel ~ '. Reboot with: ansible ' ~ inventory_hostname ~
+            ' -m ansible.builtin.reboot (devops infra node restart restarts k3s only, ' ~
+            'it does not reboot). After the reboot, run the play again: it then runs the checks.' }}
+          - >-
+            After the reboot, run on the host:
+            cat /proc/cmdline (crashkernel={{ crash_kernel }}),
+            cat /sys/kernel/kexec_crash_size (not 0),
+            sudo kdump-config show (ready to kdump) &&
+            sudo systemctl status kdump-tools-dump --no-pager
+          - >-
+            Check the hang settings:
+            sysctl kernel.panic_on_rcu_stall kernel.hardlockup_panic &&
+            systemctl show -p RuntimeWatchdogUSec
+          - >-
+            Then test the capture on a spare window:
+            echo c | sudo tee /proc/sysrq-trigger
+            (this crashes the host on purpose and reboots it).
+          - "Crash dumps appear in /var/crash. pstore files are saved in /var/lib/systemd/pstore."

@@ -1,0 +1,50 @@
+---
+# health_check.yml — Comprehensive bare-metal and GPU health diagnostics
+# The play has no default host: ansible-playbook dan_petty.infra.health_check -e target_hosts=<group>.
+- name: Bare-Metal & GPU Health Inspection
+  hosts: "{{ target_hosts }}"
+  gather_facts: true
+  tasks:
+    - name: Check system uptime and load average
+      ansible.builtin.command:
+        cmd: "uptime"
+      register: uptime_out
+      changed_when: false
+
+    - name: Inspect memory utilization
+      ansible.builtin.command:
+        cmd: "free -h"
+      register: memory_out
+      changed_when: false
+
+    - name: Inspect disk space on root and data partitions
+      ansible.builtin.command:
+        cmd: "df -h -x tmpfs -x devtmpfs -x overlay"
+      register: disk_out
+      changed_when: false
+
+    - name: Verify K3s service status
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        cmd: "systemctl is-active {{ devops_infra_node_service }}"
+      register: k3s_status
+      changed_when: false
+
+    - name: Check NVIDIA Driver & GPU status via nvidia-smi
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        cmd: >-
+          nvidia-smi
+          --query-gpu=index,name,temperature.gpu,utilization.gpu,utilization.memory,memory.total,memory.used,power.draw
+          --format=csv,noheader
+      register: gpu_smi_out
+      changed_when: false
+      failed_when: false
+
+    - name: Display Host Diagnostic Summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }} ({{ ansible_host }})"
+          - "Uptime: {{ uptime_out.stdout }}"
+          - "K3s Service: {{ k3s_status.stdout }}"
+          - "Disk Status: {{ disk_out.stdout_lines }}"
+          - "GPU Telemetry (Index, Name, Temp, GPU Util, Mem Util, Total VRAM, Used VRAM, Power):"
+          - "{{ gpu_smi_out.stdout_lines | default(['No GPU detected or nvidia-smi unavailable']) }}"
