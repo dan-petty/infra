@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/dan-petty/infra/compare/v0.13.0...v0.14.0) (2026-11-23)
+
+
+### Features
+
+* **deps:** set Renovate rangeStrategy to bump in base preset ([#80](https://github.com/dan-petty/infra/issues/80)) ([f6c34a3](https://github.com/dan-petty/infra/commit/f6c34a30bd9ef3c70ca94fda4e9c556b961ff371)), closes [#79](https://github.com/dan-petty/infra/issues/79)
+
 ## [0.13.0](https://github.com/dan-petty/infra/compare/v0.12.1...v0.13.0) (2026-11-23)
 
 
