@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/dan-petty/infra/compare/v0.9.0...v0.10.0) (2026-11-23)
+
+
+### Features
+
+* **k8s:** add the perimeter and gVisor RuntimeClass components ([#64](https://github.com/dan-petty/infra/issues/64)) ([8336e90](https://github.com/dan-petty/infra/commit/8336e90e9d2727675d48dbdeb5a731a68c412b34))
+
 ## [0.9.0](https://github.com/dan-petty/infra/compare/v0.8.0...v0.9.0) (2026-11-23)
 
 
