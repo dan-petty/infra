@@ -150,3 +150,44 @@ misconfigurations:
     statement: >-
       node-exporter mounts host filesystems to collect host metrics (dan-petty/infra#78)
     expired_at: 2026-12-23
+  # The Argo CD application controller manages cluster resources.
+  - id: KSV-0046
+    paths:
+      - "*-helm-argo-cd/ClusterRole-argo-cd-argocd-application-controller.yaml"
+    statement: >-
+      The Argo CD application controller manages cluster resources; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#19)
+    expired_at: 2026-12-23
+  # The Argo CD application controller manages resources with wildcard verbs.
+  - id: KSV-0044
+    paths:
+      - "*-helm-argo-cd/ClusterRole-argo-cd-argocd-application-controller.yaml"
+      - "*-helm-argo-cd/*/Role-argo-cd-argocd-application-controller.yaml"
+    statement: >-
+      The Argo CD application controller manages resources with wildcard verbs; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#19)
+    expired_at: 2026-12-23
+  # The Argo CD notifications controller accesses Secret credentials for notifications.
+  - id: KSV-0041
+    paths:
+      - "*-helm-argo-cd/ClusterRole-argo-cd-argocd-notifications-controller.yaml"
+    statement: >-
+      The Argo CD notifications controller accesses Secret credentials for notifications; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#19)
+    expired_at: 2026-12-23
+  # The Argo CD server views and manages cluster resources.
+  - id: KSV-0046
+    paths:
+      - "*-helm-argo-cd/ClusterRole-argo-cd-argocd-server.yaml"
+    statement: >-
+      The Argo CD server views and manages cluster resources; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#19)
+    expired_at: 2026-12-23
+  # The Argo CD server executes commands in managed pods via web terminal.
+  - id: KSV-0053
+    paths:
+      - "*-helm-argo-cd/ClusterRole-argo-cd-argocd-server.yaml"
+      - "*-helm-argo-cd/*/Role-argo-cd-argocd-server.yaml"
+    statement: >-
+      The Argo CD server executes commands in managed pods via web terminal (dan-petty/infra#19)
+    expired_at: 2026-12-23

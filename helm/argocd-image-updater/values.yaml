@@ -1,0 +1,24 @@
+# Argo CD Image Updater Helm values template.
+# Chart: argo/argocd-image-updater
+# Repo:  https://argoproj.github.io/argo-helm
+
+crds:
+  keep: true
+
+replicaCount: 1
+
+updateStrategy:
+  type: RollingUpdate
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true

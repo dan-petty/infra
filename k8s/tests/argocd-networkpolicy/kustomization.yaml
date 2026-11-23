@@ -1,0 +1,6 @@
+# The test overlay of the component argocd-networkpolicy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+components:
+  - ../../components/argocd-networkpolicy
