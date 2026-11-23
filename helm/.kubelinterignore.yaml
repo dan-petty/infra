@@ -62,3 +62,21 @@ checks:
       Upstream chart mattermost-operator 1.0.5 deployment template hardcodes no resources;
       the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
     expired_at: 2026-12-23
+  # Upstream statefulset template pyroscope 2.4.4 lacks liveness probe configuration.
+  - check: no-liveness-probe
+    paths:
+      - "*-helm-pyroscope/*/StatefulSet-pyroscope.yaml"
+      - "*-helm-pyroscope/StatefulSet-pyroscope.yaml"
+    statement: >-
+      Upstream chart pyroscope 2.4.4 statefulset template omits liveness probe;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#90)
+    expired_at: 2026-12-23
+  # Upstream statefulset template pyroscope 2.4.4 lacks update strategy configuration.
+  - check: no-rolling-update-strategy
+    paths:
+      - "*-helm-pyroscope/*/StatefulSet-pyroscope.yaml"
+      - "*-helm-pyroscope/StatefulSet-pyroscope.yaml"
+    statement: >-
+      Upstream chart pyroscope 2.4.4 statefulset template omits update strategy;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#90)
+    expired_at: 2026-12-23

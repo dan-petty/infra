@@ -177,26 +177,32 @@ run 1 "trivy: an ignore file that does not exist stops the step" \
   env RENDERED="$work/trivy" TRIVY_IGNORE_FILE="$work/no-file.yaml" "$validate" trivy
 says "trivy: the step names the ignore file that does not exist" "$work/no-file.yaml does not exist"
 
-# deployment FOLDER NAME: write a Deployment NAME with no probe to the render folder FOLDER.
-deployment() {
+# workload FOLDER KIND NAME: write a workload KIND NAME with no probe to the render folder FOLDER.
+workload() {
   rm -rf "$work/kube-linter"
   mkdir -p "$work/kube-linter/$1"
-  cat >"$work/kube-linter/$1/Deployment-$2.yaml" <<EOF
+  local extra=""
+  if [ "$2" = "StatefulSet" ]; then
+    extra="serviceName: $3-headless"
+  else
+    extra="strategy:
+    type: RollingUpdate"
+  fi
+  cat >"$work/kube-linter/$1/$2-$3.yaml" <<EOF
 apiVersion: apps/v1
-kind: Deployment
+kind: $2
 metadata:
-  name: $2
+  name: $3
 spec:
   replicas: 1
-  strategy:
-    type: RollingUpdate
+  $extra
   selector:
     matchLabels:
-      app: $2
+      app: $3
   template:
     metadata:
       labels:
-        app: $2
+        app: $3
     spec:
       serviceAccountName: default
       automountServiceAccountToken: false
@@ -226,11 +232,11 @@ spec:
               path: /ready
               port: 8080
 EOF
-  cat >"$work/kube-linter/$1/NetworkPolicy-$2.yaml" <<EOF
+  cat >"$work/kube-linter/$1/NetworkPolicy-$3.yaml" <<EOF
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: $2
+  name: $3
 spec:
   podSelector: {}
   policyTypes:
@@ -243,11 +249,13 @@ kl_step() {
   env RENDERED="$work/kube-linter" KUBE_LINTER_IGNORE_FILE="$kl_ignore" "$validate" kube-linter
 }
 
-deployment 1-helm-mattermost-operator mattermost-operator
+workload 1-helm-mattermost-operator Deployment mattermost-operator
 run 0 "kube-linter: the accepted no-liveness-probe on Deployment mattermost-operator passes" kl_step
-deployment 1-helm-other other-operator
-run 1 "kube-linter: no-liveness-probe on Deployment other-operator fails" kl_step
-deployment 1-helm-mattermost-operator mattermost-operator
+workload 1-helm-pyroscope StatefulSet pyroscope
+run 0 "kube-linter: the accepted no-liveness-probe on StatefulSet pyroscope passes" kl_step
+workload 1-helm-other StatefulSet other-workload
+run 1 "kube-linter: no-liveness-probe on StatefulSet other-workload fails" kl_step
+workload 1-helm-pyroscope StatefulSet pyroscope
 run 1 "kube-linter: the finding fails with no ignore file" env RENDERED="$work/kube-linter" "$validate" kube-linter
 run 1 "kube-linter: an ignore file that does not exist stops the step" \
   env RENDERED="$work/kube-linter" KUBE_LINTER_IGNORE_FILE="$work/no-kl-file.yaml" "$validate" kube-linter

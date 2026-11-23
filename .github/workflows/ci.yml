@@ -198,6 +198,7 @@ jobs:
         helm/argo-cd/test-chart
         helm/argocd-image-updater/test-chart
         helm/mattermost-operator/test-chart
+        helm/pyroscope/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
       kube-linter-ignorefile: helm/.kubelinterignore.yaml

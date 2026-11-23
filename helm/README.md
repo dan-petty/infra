@@ -40,6 +40,7 @@ The unit tests of the template are in `test-chart/tests/`.
 | [`argo-cd`](argo-cd/values.yaml) | `argo-cd` 10.18.2 from `https://argoproj.github.io/argo-helm` | Argo CD GitOps controller and server: non-root security contexts, requests and limits, Valkey replacement for Redis, probes and notification templates. | dan-petty/homelab#94. |
 | [`argocd-image-updater`](argocd-image-updater/values.yaml) | `argocd-image-updater` 1.4.2 from `https://argoproj.github.io/argo-helm` | Argo CD Image Updater: non-root security context, requests and limits, and metrics. | dan-petty/homelab#94. |
 | [`mattermost-operator`](mattermost-operator/values.yaml) | `mattermost-operator` 1.0.5 from `https://helm.mattermost.com` | Mattermost operator: non-root security context, read-only root filesystem, dropped capabilities. | dan-petty/homelab#93. |
+| [`pyroscope`](pyroscope/values.yaml) | `pyroscope` 2.4.4 from `https://grafana.github.io/helm-charts` | Grafana Pyroscope continuous profiling: monolithic mode, non-root security context, read-only root filesystem, requests and limits. | dan-petty/homelab#819. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
@@ -102,3 +103,5 @@ and `tests/test-k8s-validate.sh` checks that each entry admits only its finding 
 | `non-existent-service-account` | Deployment `mattermost-operator`: upstream serviceaccount template omits namespace. | 2026-12-23 |
 | `unset-cpu-requirements` | Deployment `mattermost-operator`: upstream deployment template hardcodes no resources. | 2026-12-23 |
 | `unset-memory-requirements` | Deployment `mattermost-operator`: upstream deployment template hardcodes no resources. | 2026-12-23 |
+| `no-liveness-probe` | StatefulSet `pyroscope`: upstream statefulset template omits liveness probe. | 2026-12-23 |
+| `no-rolling-update-strategy` | StatefulSet `pyroscope`: upstream statefulset template omits update strategy. | 2026-12-23 |
