@@ -36,6 +36,8 @@ The unit tests of the template are in `test-chart/tests/`.
 | [`prometheus-operator-crds`](prometheus-operator-crds/values.yaml) | `prometheus-operator-crds` 33.0.2 from `https://prometheus-community.github.io/helm-charts` | Prometheus Operator CRDs: keep resource policy annotation. | dan-petty/homelab#819. |
 | [`prometheus`](prometheus/values.yaml) | `prometheus` 29.47.2 from `https://prometheus-community.github.io/helm-charts` | Prometheus server and Alertmanager: TSDB out-of-order window, OTLP receiver, dynamic rule loader sidecar, non-root security contexts, requests and limits. | dan-petty/homelab#819. |
 | [`k8s-monitoring`](k8s-monitoring/values.yaml) | `k8s-monitoring` 4.6.1 from `https://grafana.github.io/helm-charts` | Grafana Kubernetes Monitoring: cluster metrics, host metrics, pod logs via Loki, node logs from journal, annotation autodiscovery, eBPF profiling, collectors and telemetry services. | dan-petty/homelab#819. |
+| [`argo-cd`](argo-cd/values.yaml) | `argo-cd` 10.18.2 from `https://argoproj.github.io/argo-helm` | Argo CD GitOps controller and server: non-root security contexts, requests and limits, Valkey replacement for Redis, probes and notification templates. | dan-petty/homelab#94. |
+| [`argocd-image-updater`](argocd-image-updater/values.yaml) | `argocd-image-updater` 1.4.2 from `https://argoproj.github.io/argo-helm` | Argo CD Image Updater: non-root security context, requests and limits, and metrics. | dan-petty/homelab#94. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
@@ -73,3 +75,8 @@ admits only its finding on its object.
 | KSV-0009 | DaemonSet `k8s-monitoring-node-exporter`: node-exporter requires host networking to collect node network metrics. | 2026-12-23 |
 | KSV-0010 | DaemonSet `k8s-monitoring-node-exporter`: node-exporter requires host PID namespace to collect host process metrics. | 2026-12-23 |
 | KSV-0121 | DaemonSet `k8s-monitoring-node-exporter`: node-exporter mounts host filesystems to collect host metrics. | 2026-12-23 |
+| KSV-0046 | ClusterRole `argo-cd-argocd-application-controller`: the application controller manages cluster resources. | 2026-12-23 |
+| KSV-0044 | ClusterRole and Role `argo-cd-argocd-application-controller`: the application controller manages resources with wildcard verbs. | 2026-12-23 |
+| KSV-0041 | ClusterRole `argo-cd-argocd-notifications-controller`: the notifications controller accesses Secret credentials for notifications. | 2026-12-23 |
+| KSV-0046 | ClusterRole `argo-cd-argocd-server`: the server views and manages cluster resources. | 2026-12-23 |
+| KSV-0053 | ClusterRole and Role `argo-cd-argocd-server`: the server executes commands in managed pods via web terminal. | 2026-12-23 |

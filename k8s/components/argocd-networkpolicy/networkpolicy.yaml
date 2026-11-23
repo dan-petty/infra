@@ -1,0 +1,84 @@
+# Generic NetworkPolicies for the argocd namespace: intra-namespace pod communications, Traefik
+# ingress to the Argo CD server UI and API, Prometheus scrape ingress, and egress to CoreDNS,
+# the Kubernetes API server and Git hosts on TCP port 443.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-default-perimeter-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # 1. Intra-namespace pod communications (server, repo-server, controller, redis/valkey)
+    - from:
+        - podSelector: {}
+    # 2. Ingress from Traefik to Argo CD Server UI and API (ports 8080, 443)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 443
+    # 3. Prometheus metrics scrapes in monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8083
+        - protocol: TCP
+          port: 8084
+        - protocol: TCP
+          port: 9121
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-default-perimeter-egress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # 1. Intra-namespace pod communications
+    - to:
+        - podSelector: {}
+    # 2. DNS resolution in kube-system
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # 3. Kubernetes API server access
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+        - protocol: TCP
+          port: 8443
+    # 4. Git and Helm pulls on HTTPS port 443
+    - ports:
+        - protocol: TCP
+          port: 443

@@ -18,6 +18,7 @@ The README of each component names its consumers.
 | `valkey-acl` | The ACL users of the base `valkey` from the Secret `valkey-acl`. | None yet. Planned: the stores of devops-cli. |
 | `default-perimeter` | A default-deny NetworkPolicy with DNS egress and monitoring scrape ingress. | Platform services and dan-petty/homelab#87. |
 | `gvisor-runtimeclass` | The RuntimeClass `gvisor` with handler `runsc` and the gVisor node selector. | Clusters with the gvisor role and dan-petty/homelab#87. |
+| `argocd-networkpolicy` | Generic NetworkPolicies for the argocd namespace: intra-namespace, Traefik ingress, metrics scrape and API/Git egress. | dan-petty/homelab#94. |
 
 A consumer pins a component at a release tag of infra:
 

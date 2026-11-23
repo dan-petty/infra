@@ -176,6 +176,7 @@ jobs:
         k8s/tests/default-perimeter-port
         k8s/tests/gvisor-runtimeclass
         k8s/tests/cloudflared
+        k8s/tests/argocd-networkpolicy
       helm-charts: |
         charts/example
         charts/service-tenant
@@ -192,6 +193,8 @@ jobs:
         helm/prometheus-operator-crds/test-chart
         helm/prometheus/test-chart
         helm/k8s-monitoring/test-chart
+        helm/argo-cd/test-chart
+        helm/argocd-image-updater/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
       trivy-ignorefile: helm/.trivyignore.yaml
