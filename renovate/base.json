@@ -11,6 +11,7 @@
   "rebaseWhen": "conflicted",
   "updateNotScheduled": false,
   "separateMinorPatch": true,
+  "rangeStrategy": "bump",
   "labels": ["type/chore", "scope/deps"],
   "commitMessagePrefix": "chore(deps):",
   "commitMessageAction": "update",
