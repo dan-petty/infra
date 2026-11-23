@@ -47,6 +47,16 @@ else
   failures=$((failures + 1))
 fi
 
+# The automerge configuration of base.json covers each update after all checks pass (#48).
+cases=$((cases + 1))
+if jq -e '.automerge == true and (.packageRules[] | select(.automerge == true) | (.matchUpdateTypes // []) == [])' \
+  "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: automerge is enabled for all updates"
+else
+  echo "FAIL renovate/base.json: automerge for all updates is missing"
+  failures=$((failures + 1))
+fi
+
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
 mkdir "$work/repo"

@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "The shared Renovate preset of the repositories of dan-petty: the schedule, the groups, the labels, the commit messages and the automerge of minor, patch and digest updates. A repository extends it with github>dan-petty/infra//renovate/base. A repository with Kubernetes manifests under k8s/ also extends github>dan-petty/infra//renovate/k8s.",
+  "description": "The shared Renovate preset of the repositories of dan-petty: the schedule, the groups, the labels, the commit messages, the vulnerability alerts and the automerge of each update after all checks pass. A repository extends it with github>dan-petty/infra//renovate/base. A repository with Kubernetes manifests under k8s/ also extends github>dan-petty/infra//renovate/k8s.",
   "extends": [
     "config:recommended"
   ],
@@ -16,6 +16,9 @@
   "commitMessageAction": "update",
   "commitMessageTopic": "{{{depName}}}",
   "platformCommit": "enabled",
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}",
   "dependencyDashboard": {
     "enabled": true,
@@ -32,12 +35,16 @@
     "commitMessageSuffix": "",
     "prConcurrentLimit": 4,
     "vulnerabilityFixStrategy": "highest",
-    "separateMajorMinor": false
+    "separateMajorMinor": false,
+    "automerge": true,
+    "automergeType": "pr",
+    "platformAutomerge": false
   },
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["* * * * 1"],
-    "commitMessageAction": "lock file maintenance"
+    "commitMessageAction": "lock file maintenance",
+    "automerge": true
   },
   "pin": {
     "commitMessageAction": "pin"
@@ -98,8 +105,8 @@
       "schedule": ["at any time"]
     },
     {
-      "description": "Owner, 2026-11-20 (#6547): each minor, patch and digest update merges itself. Renovate merges the pull request on a later run, and only when each check of the pull request passed, so the rule needs no ruleset. GitHub auto-merge is off here: it waits only for the checks that a ruleset requires, and some repositories require none. A group branch merges only when each update in it can merge, so digest is in the rule: the groups github actions and container images hold digest updates. A major update, a pin and lock file maintenance wait for a person.",
-      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "description": "Owner, 2026-11-20 (#6547) and 2026-11-23 (#48): each update merges itself after all of its checks pass. Renovate merges the pull request on a later run, and only when each check of the pull request passed, so the rule needs no ruleset. GitHub auto-merge is off here: it waits only for the checks that a ruleset requires, and some repositories require none. A group branch merges only when each update in it can merge, so digest is in the rule: the groups github actions and container images hold digest updates.",
+      "matchPackageNames": ["*"],
       "automerge": true,
       "automergeType": "pr",
       "platformAutomerge": false
