@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/dan-petty/infra/compare/v0.16.0...v0.17.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Argo CD values templates ([#86](https://github.com/dan-petty/infra/issues/86)) ([40a2159](https://github.com/dan-petty/infra/commit/40a21597863dfbef0decd0ed472e3ba67461b3bc)), closes [#19](https://github.com/dan-petty/infra/issues/19)
+
 ## [0.16.0](https://github.com/dan-petty/infra/compare/v0.15.0...v0.16.0) (2026-11-23)
 
 
