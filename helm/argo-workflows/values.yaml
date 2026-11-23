@@ -1,0 +1,33 @@
+# Argo Workflows Helm Chart Values Template
+# Chart: argo-workflows (2.0.18)
+# Repo:  oci://ghcr.io/argoproj/argo-helm
+
+server:
+  enabled: false
+
+crds:
+  install: false
+
+controller:
+  deploymentAnnotations:
+    ignore-check.kube-linter.io/no-rolling-update-strategy: >-
+      Argo Workflows controller requires Recreate strategy to avoid dual reconciliation
+    ignore-check.kube-linter.io/no-readiness-probe: "Workflow controller provides healthz liveness probe only"
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi

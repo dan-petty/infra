@@ -36,3 +36,56 @@ misconfigurations:
       The ESO cert-controller writes the CA bundle into the ValidatingWebhookConfigurations of ESO;
       the owner accepted this CRITICAL judgment on 2026-11-22 for 30 days (dan-petty/infra#12)
     expired_at: 2026-12-22
+  # The CloudNativePG operator manages Secrets for database users, passwords, and TLS certificates.
+  - id: KSV-0041
+    paths:
+      - "*-helm-cloudnative-pg/ClusterRole-cloudnative-pg.yaml"
+    statement: >-
+      The CloudNativePG operator manages Secrets for Postgres credentials and certificates; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The CloudNativePG operator executes commands in PostgreSQL pods to manage failover and replication.
+  - id: KSV-0053
+    paths:
+      - "*-helm-cloudnative-pg/ClusterRole-cloudnative-pg.yaml"
+    statement: >-
+      The CloudNativePG operator executes commands in PostgreSQL pods for lifecycle management (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The CloudNativePG operator manages Services and NetworkPolicies for Postgres clusters.
+  - id: KSV-0056
+    paths:
+      - "*-helm-cloudnative-pg/ClusterRole-cloudnative-pg.yaml"
+    statement: >-
+      The CloudNativePG operator manages Services and NetworkPolicies for clusters (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The CloudNativePG operator updates webhook configurations for its admission webhook.
+  - id: KSV-0114
+    paths:
+      - "*-helm-cloudnative-pg/ClusterRole-cloudnative-pg.yaml"
+    statement: >-
+      The CloudNativePG operator updates webhook configurations for its admission webhook; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The Barman Cloud plugin accesses backup store credentials stored in Secrets.
+  - id: KSV-0041
+    paths:
+      - "*-helm-plugin-barman-cloud/ClusterRole-plugin-barman-cloud.yaml"
+    statement: >-
+      The Barman Cloud plugin accesses object store credentials stored in Secrets; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The Argo Workflows workflow controller reads CA certificate Secrets.
+  - id: KSV-0041
+    paths:
+      - "*-helm-argo-workflows/ClusterRole-argo-workflows-workflow-controller.yaml"
+    statement: >-
+      The Argo Workflows workflow controller reads CA certificate Secrets; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#18)
+    expired_at: 2026-12-23
+  # The Argo Workflows workflow controller executes commands in step pods to monitor processes.
+  - id: KSV-0053
+    paths:
+      - "*-helm-argo-workflows/ClusterRole-argo-workflows-workflow-controller.yaml"
+    statement: >-
+      The Argo Workflows workflow controller executes commands in step pods to monitor processes (dan-petty/infra#18)
+    expired_at: 2026-12-23

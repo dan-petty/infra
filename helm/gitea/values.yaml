@@ -1,0 +1,69 @@
+# Gitea Helm Chart Values Template
+# Chart: gitea (12.7.0)
+# Repo:  oci://docker.gitea.com/charts
+
+gitea:
+  config:
+    APP_NAME: "Gitea: Git with a cup of tea"
+    RUN_MODE: "prod"
+    server:
+      DISABLE_SSH: false
+      START_SSH_SERVER: true
+      SSH_PORT: 2222
+      HTTP_PORT: 3000
+    security:
+      INSTALL_LOCK: true
+    database:
+      DB_TYPE: sqlite3
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+
+deployment:
+  annotations:
+    ignore-check.kube-linter.io/no-rolling-update-strategy: >-
+      Gitea with SQLite requires Recreate strategy to prevent database corruption
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+initContainers:
+  resources:
+    limits:
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+persistence:
+  annotations:
+    argocd.argoproj.io/sync-options: "Prune=false,Delete=false"
+
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: false
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false

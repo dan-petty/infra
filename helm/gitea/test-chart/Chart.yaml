@@ -1,0 +1,8 @@
+apiVersion: v2
+name: test-chart
+description: Test chart that pins gitea
+version: 0.1.0
+dependencies:
+  - name: gitea
+    version: 12.7.0
+    repository: oci://docker.gitea.com/charts

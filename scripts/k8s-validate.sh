@@ -128,6 +128,13 @@ render() {
     write_objects "$work/render.yaml" "$RENDERED/$n-kustomize-$(basename "$root")"
   done
   for chart in "${charts[@]}"; do
+    local repo
+    repo="$(yq '.dependencies[0].repository // ""' "$chart/Chart.yaml" 2>/dev/null || true)"
+    if [[ "$repo" =~ ^https?:// ]]; then
+      local dep_name
+      dep_name="$(yq '.dependencies[0].name' "$chart/Chart.yaml")"
+      helm repo add "$dep_name" "$repo" --force-update >/dev/null 2>&1 || true
+    fi
     helm dependency build "$chart"
     chart_inputs "$chart"
     mapfile -t values < <(find "$chart/ci" -maxdepth 1 -name '*-values.yaml' 2>/dev/null | sort)
