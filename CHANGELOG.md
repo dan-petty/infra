@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/dan-petty/infra/compare/v0.11.0...v0.12.0) (2026-11-23)
+
+
+### Features
+
+* **ansible:** add crash-capture and health-check plays ([#68](https://github.com/dan-petty/infra/issues/68)) ([80789dd](https://github.com/dan-petty/infra/commit/80789dd17773d22c004b954d68c281e2778708ef))
+
 ## [0.11.0](https://github.com/dan-petty/infra/compare/v0.10.0...v0.11.0) (2026-11-23)
 
 
