@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/dan-petty/infra/compare/v0.6.0...v0.7.0) (2026-11-23)
+
+
+### Features
+
+* **deps:** automerge all Renovate updates ([#54](https://github.com/dan-petty/infra/issues/54)) ([fea4d36](https://github.com/dan-petty/infra/commit/fea4d364aed2aaccbcbfb9be981cc205feeb39fe))
+
 ## [0.6.0](https://github.com/dan-petty/infra/compare/v0.5.0...v0.6.0) (2026-11-23)
 
 
