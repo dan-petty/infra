@@ -1,0 +1,15 @@
+k8s-monitoring:
+  cluster:
+    name: test-cluster
+  destinations:
+    testPrometheus:
+      type: prometheus
+      url: http://prometheus-server:9090/api/v1/write
+    testLoki:
+      type: loki
+      url: http://loki:3100/loki/api/v1/push
+    testPyroscope:
+      type: pyroscope
+      url: http://pyroscope:4040
+  alloy-operator:
+    deploy: false
