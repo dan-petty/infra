@@ -47,6 +47,16 @@ else
   failures=$((failures + 1))
 fi
 
+# The automerge packageRule of base.json covers lockFileMaintenance alongside minor, patch and digest (#48).
+cases=$((cases + 1))
+if jq -e '.packageRules[] | select(.automerge == true) | .matchUpdateTypes | index("lockFileMaintenance")' \
+  "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: lockFileMaintenance automerge is enabled"
+else
+  echo "FAIL renovate/base.json: lockFileMaintenance automerge is missing"
+  failures=$((failures + 1))
+fi
+
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
 mkdir "$work/repo"
