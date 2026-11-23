@@ -57,6 +57,15 @@ else
   failures=$((failures + 1))
 fi
 
+# The rangeStrategy of base.json is bump, so version ranges update with lock files (#79).
+cases=$((cases + 1))
+if jq -e '.rangeStrategy == "bump"' "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: rangeStrategy is bump"
+else
+  echo "FAIL renovate/base.json: rangeStrategy is bump is missing"
+  failures=$((failures + 1))
+fi
+
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
 mkdir "$work/repo"
