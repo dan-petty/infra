@@ -17,6 +17,7 @@ description = """The output of uv sync, tofu init and the chart and collection b
 covers. The default allowlist of gitleaks skips .git and this file."""
 paths = [
   '''(?:^|/)\.venv/''',
+  '''(?:^|/)\.ansible/''',
   '''(?:^|/)\.terraform/''',
   '''(?:^|/)charts/[^/]+/charts/[^/]+\.tgz$''',
   '''(?:^|/)dan_petty-infra-[^/]+\.tar\.gz$''',

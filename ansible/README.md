@@ -16,9 +16,15 @@ gives the hosts and the values.
 
 | Role | Play | Content |
 | --- | --- | --- |
+| [`common`](roles/common/README.md) | None | Baseline configuration for Debian k3s nodes: APT sources, headless GRUB, base packages, automation user, kernel modules, sysctl, and UFW firewall. |
+| [`data_disk`](roles/data_disk/README.md) | `08_mount_nvme.yml` | Format and mount dedicated data block devices (such as NVMe storage). |
 | [`nvidia`](roles/nvidia/README.md) | None | The NVIDIA driver and the NVIDIA Container Toolkit of a Debian k3s node, a driver branch pin and a GPU power limit. |
 | [`gvisor`](roles/gvisor/README.md) | `gvisor.yml` | The pinned gVisor runtime (`runsc`) of a Debian k3s node, and the node label of its RuntimeClass. |
 | [`cpu_tuning`](roles/cpu_tuning/README.md) | `cpu_tuning.yml` | The CPU power limits and the disabled CPU idle states of a host, at each boot. |
+| None | `00_bootstrap_user.yml` | Bootstrap dedicated Ansible automation user on Debian nodes. |
+| None | `06_cluster_backup.yml` | Snapshot k3s control plane database (SQLite/etcd), archive TLS tokens, certificates and manifests. |
+| None | `09_system_update.yml` | Rolling system package upgrade and maintenance across Debian nodes. |
+| None | `11_secrets_encryption.yml` | Encrypt Kubernetes Secrets at rest on the k3s server (aescbc). |
 | `example` | `example.yml` | Fixtures: they let the Ansible job of CI prove that `ansible-lint` and `ansible-galaxy collection build` run. |
 
 The consumers of `nvidia`, `gvisor` and `cpu_tuning` are the Debian k3s clusters with NVIDIA GPU

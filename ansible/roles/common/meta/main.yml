@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: dan-petty
+  description: Baseline configuration for Debian k3s nodes.
+  license: MIT
+  min_ansible_version: "2.20"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+dependencies: []

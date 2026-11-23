@@ -2,6 +2,7 @@
 .venv/
 # The caches of ansible-lint and ansible-galaxy, and the collection that ansible-galaxy builds.
 .ansible/
+**/.ansible/
 dan_petty-infra-*.tar.gz
 # The providers and modules of tofu init. The lock file .terraform.lock.hcl of each example stays in
 # git: it pins each provider at one version with its checksums, and Renovate updates it.

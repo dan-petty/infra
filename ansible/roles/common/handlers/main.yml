@@ -1,0 +1,8 @@
+---
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Regenerate GRUB configuration
+  ansible.builtin.command: update-grub
+  changed_when: true

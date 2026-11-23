@@ -35,14 +35,14 @@ a CI job checks has an `example` fixture, so CI proves that each check runs; the
 each values template is the fixture of `helm/`. The fixture of `renovate/` is `tests/renovate/`.
 The real templates so far are the Renovate presets in `renovate/` (dan-petty/infra#6), the chart
 `charts/service-tenant` (dan-petty/infra#10, with its secret store from dan-petty/infra#12), the
-Ansible roles `nvidia`, `gvisor` and `cpu_tuning` (dan-petty/infra#7), the base `k8s/bases/valkey`
+Ansible roles `common`, `data_disk`, `nvidia`, `gvisor` and `cpu_tuning`, and the generic plays (dan-petty/infra#7, dan-petty/infra#8), the base `k8s/bases/valkey`
 with its components `valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13),
 the base `k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)),
 the values template `helm/external-secrets` of External Secrets Operator (dan-petty/infra#12), the
 OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9), and
 the Copier template of a new repository (dan-petty/infra#37, [templates/README.md](templates/README.md)).
 The fixture of `templates/` is each answer set of `tests/test-repository-template.sh`.
-More templates come with later items, such as #8 (the Ansible role common and plays) and #14 to
+More templates come with later items, such as #14 to
 #19 (Kubernetes bases and components, and Helm values templates).
 
 ## Pin a release

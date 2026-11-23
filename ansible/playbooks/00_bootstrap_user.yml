@@ -1,0 +1,23 @@
+---
+# 00_bootstrap_user.yml — Bootstrap dedicated Ansible automation user
+# The play has no default host: ansible-playbook dan_petty.infra.00_bootstrap_user -e target_hosts=<group>.
+- name: Bootstrap Dedicated Ansible Automation User
+  hosts: "{{ target_hosts }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure python3 and sudo are installed on target node
+      ansible.builtin.raw: |
+        which python3 sudo || (apt-get update && apt-get install -y python3 sudo)
+      changed_when: false
+
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Provision dedicated ansible automation user
+      ansible.builtin.include_role:
+        name: dan_petty.infra.common
+        tasks_from: user.yml

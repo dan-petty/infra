@@ -1,0 +1,13 @@
+---
+# grub.yml — Unattended GRUB boot for headless nodes
+- name: Configure GRUB for unattended headless boots
+  ansible.builtin.copy:
+    dest: /etc/default/grub.d/90-headless.cfg
+    mode: "0644"
+    content: |
+      # Managed by Ansible: boot without a keyboard or display. Hold Shift or press Esc during boot for the menu.
+      GRUB_TIMEOUT_STYLE=hidden
+      GRUB_TIMEOUT=2
+      GRUB_RECORDFAIL_TIMEOUT=0
+      GRUB_TERMINAL=console
+  notify: Regenerate GRUB configuration

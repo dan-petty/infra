@@ -1,0 +1,20 @@
+---
+# Test of the role common: the argument check of the role stops a host that has no
+# common_apt_suite, before the first task of the role.
+- name: Check that the common role requires common_apt_suite
+  hosts: k3s_server
+  gather_facts: false
+  tasks:
+    - name: Run the common role with no common_apt_suite
+      block:
+        - name: Run the common role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+      rescue:
+        - name: Check that the argument check named common_apt_suite
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'common_apt_suite' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true

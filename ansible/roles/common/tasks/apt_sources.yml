@@ -1,0 +1,30 @@
+---
+# apt_sources.yml — Debian APT Sources (DEB822) configuration
+- name: Clear legacy /etc/apt/sources.list to prevent duplicate warnings with DEB822 sources
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list
+    content: "# Managed by Ansible: APT repositories are configured in DEB822 format under /etc/apt/sources.list.d/\n"
+    mode: "0644"
+
+- name: Remove legacy and duplicate Debian source files if present
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/etc/apt/sources.list.d/debian-{{ common_apt_suite }}-main.list"
+    - /etc/apt/sources.list.d/debian.sources
+    - /etc/apt/sources.list.d/moved-from-main.sources
+
+- name: Ensure Debian non-free and non-free-firmware components are enabled in APT (DEB822 format)
+  ansible.builtin.deb822_repository:
+    name: "debian-{{ common_apt_suite }}-main"
+    types: [deb]
+    uris: "http://deb.debian.org/debian"
+    suites: ["{{ common_apt_suite }}"]
+    components:
+      - main
+      - contrib
+      - non-free
+      - non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    state: present
