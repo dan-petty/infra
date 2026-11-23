@@ -1,0 +1,44 @@
+# Grafana Helm values template.
+# Chart: grafana-community/grafana
+# Repo:  https://grafana-community.github.io/helm-charts
+
+# Grafana keeps data in SQLite. A rolling update runs two pods concurrently on
+# the database file, which can fail with database locks. Recreate stops the old
+# pod first.
+deploymentStrategy:
+  type: Recreate
+
+annotations:
+  ignore-check.kube-linter.io/no-rolling-update-strategy: >-
+    Grafana uses Recreate strategy to avoid SQLite database lock issues during updates
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 2Gi
+
+rbac:
+  namespaced: true
+
+initChownData:
+  enabled: false
+
+admin:
+  existingSecret: grafana-admin
+
+grafana.ini:
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+    check_for_plugin_updates: false
+    feedback_links_enabled: false
+  news:
+    news_feed_enabled: false
