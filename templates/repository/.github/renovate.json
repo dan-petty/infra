@@ -1,5 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Renovate opens the dependency update pull requests of this repository with the shared preset of infra: the schedule, the groups, the labels and the automerge of minor, patch and digest updates. The copier manager updates the files of the template of infra to each new release tag of infra.",
+  "description": "Renovate opens the dependency update pull requests of this repository with the shared preset of infra: the schedule, the groups, the labels and the automerge of each update after all checks pass. The copier manager updates the files of the template of infra to each new release tag of infra.",
   "extends": ["github>dan-petty/infra//renovate/base"]
 }

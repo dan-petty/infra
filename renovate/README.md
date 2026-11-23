@@ -6,7 +6,7 @@ extends a preset in its `renovate.json`. infra itself extends them with the `loc
 
 | Preset | Content | Extend it with |
 | --- | --- | --- |
-| `base.json` | The schedule, the groups, the labels, the commit messages, the vulnerability alerts and the automerge of minor, patch and digest updates after all checks pass. | `github>dan-petty/infra//renovate/base` |
+| `base.json` | The schedule, the groups, the labels, the commit messages, the vulnerability alerts and the automerge of each update after all checks pass. | `github>dan-petty/infra//renovate/base` |
 | `k8s.json` | The managers of the Kubernetes manifests under `k8s/`: the kubernetes manager on each manifest, the argocd manager on each Application under `k8s/argocd/`, the helm-values manager on each values file and a custom manager for the `spec.imageName` image of a CloudNativePG Cluster. An Argo CD git source that tracks `main` gets no update. A package rule gives the Ansible collection of infra the lookup name `dan-petty/infra`. All pins of infra move in one pull request. | `github>dan-petty/infra//renovate/k8s` |
 
 ```json
