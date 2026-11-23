@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/dan-petty/infra/compare/v0.7.0...v0.8.0) (2026-11-23)
+
+
+### Features
+
+* **ci:** automerge release please pull requests ([#58](https://github.com/dan-petty/infra/issues/58)) ([f8736b8](https://github.com/dan-petty/infra/commit/f8736b870b989ee76a2edca5068757cb5414f40e)), closes [#57](https://github.com/dan-petty/infra/issues/57)
+
 ## [0.7.0](https://github.com/dan-petty/infra/compare/v0.6.0...v0.7.0) (2026-11-23)
 
 
