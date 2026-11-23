@@ -72,6 +72,7 @@ jobs:
               - *tools
               - .github/workflows/k8s-validate.yml
               - .kube-linter.yaml
+              - helm/.kubelinterignore.yaml
               - scripts/k8s-validate.sh
               - tests/test-k8s-validate.sh
               - tests/test-kube-linter-config.sh
@@ -196,8 +197,10 @@ jobs:
         helm/grafana/test-chart
         helm/argo-cd/test-chart
         helm/argocd-image-updater/test-chart
+        helm/mattermost-operator/test-chart
       promtool-rules: |
         k8s/components/example/rules/example.rules.yaml
+      kube-linter-ignorefile: helm/.kubelinterignore.yaml
       trivy-ignorefile: helm/.trivyignore.yaml
 
   k8s-config:

@@ -1,0 +1,64 @@
+# The written judgments of the kube-linter scan of the K8s renders of infra (README.md, "Checks"):
+# the K8s job of ci.yml gives this file to the kube-linter step of k8s-validate.yml. Only a finding
+# of an upstream chart of helm/ can get a judgment here when the upstream templates lack values
+# fields for annotations or configurations. infra fixes each finding of its own templates.
+#
+# The render step writes each object to its own file <n>-helm-<release>/[<namespace>/]<kind>-<name>.yaml
+# (scripts/k8s-validate.sh), so each entry names one check on one object pattern. Each entry has a
+# statement and an expiry date. After the date, the scan reports the finding again, and a person
+# checks the judgment again.
+checks:
+  # Upstream deployment template mattermost-operator 1.0.5 lacks liveness probe configuration.
+  - check: no-liveness-probe
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 deployment template omits liveness probe;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # Upstream deployment template mattermost-operator 1.0.5 lacks readiness probe configuration.
+  - check: no-readiness-probe
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 deployment template omits readiness probe;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # Upstream deployment template mattermost-operator 1.0.5 lacks update strategy configuration.
+  - check: no-rolling-update-strategy
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 deployment template omits update strategy;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # Upstream serviceaccount template mattermost-operator 1.0.5 omits metadata.namespace.
+  - check: non-existent-service-account
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 serviceaccount template omits metadata.namespace;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # Upstream deployment template mattermost-operator 1.0.5 hardcodes empty resources.
+  - check: unset-cpu-requirements
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 deployment template hardcodes no resources;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # Upstream deployment template mattermost-operator 1.0.5 hardcodes empty resources.
+  - check: unset-memory-requirements
+    paths:
+      - "*-helm-mattermost-operator/*/Deployment-mattermost-operator.yaml"
+      - "*-helm-mattermost-operator/Deployment-mattermost-operator.yaml"
+    statement: >-
+      Upstream chart mattermost-operator 1.0.5 deployment template hardcodes no resources;
+      the owner accepted this judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: test-chart
+version: 0.1.0
+dependencies:
+  - name: mattermost-operator
+    version: 1.0.5
+    repository: https://helm.mattermost.com

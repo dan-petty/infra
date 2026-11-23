@@ -191,3 +191,35 @@ misconfigurations:
     statement: >-
       The Argo CD server executes commands in managed pods via web terminal (dan-petty/infra#19)
     expired_at: 2026-12-23
+  # The Mattermost operator manages Secrets for database credentials and installation tokens.
+  - id: KSV-0041
+    paths:
+      - "*-helm-mattermost-operator/ClusterRole-mattermost-operator.yaml"
+    statement: >-
+      The Mattermost operator manages Secrets for installation credentials; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # The Mattermost operator manages wildcard verbs on installation custom resources.
+  - id: KSV-0045
+    paths:
+      - "*-helm-mattermost-operator/ClusterRole-mattermost-operator.yaml"
+    statement: >-
+      The Mattermost operator uses wildcard verbs on installation custom resources; the owner
+      accepted this HIGH judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # The Mattermost operator reconciles cluster-wide custom resources.
+  - id: KSV-0046
+    paths:
+      - "*-helm-mattermost-operator/ClusterRole-mattermost-operator.yaml"
+    statement: >-
+      The Mattermost operator manages installation custom resources; the owner
+      accepted this CRITICAL judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23
+  # The Mattermost operator creates and updates Services and Ingresses for installations.
+  - id: KSV-0056
+    paths:
+      - "*-helm-mattermost-operator/ClusterRole-mattermost-operator.yaml"
+    statement: >-
+      The Mattermost operator configures networking resources for installations; the owner
+      accepted this HIGH judgment on 2026-11-23 for 30 days (dan-petty/infra#56)
+    expired_at: 2026-12-23

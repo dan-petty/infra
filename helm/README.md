@@ -39,6 +39,7 @@ The unit tests of the template are in `test-chart/tests/`.
 | [`grafana`](grafana/values.yaml) | `grafana` 14.4.2 from `https://grafana-community.github.io/helm-charts` | Grafana visualization platform: Recreate deployment strategy for SQLite database safety, non-root security context, namespaced RBAC, requests and limits. | dan-petty/homelab#91. |
 | [`argo-cd`](argo-cd/values.yaml) | `argo-cd` 10.18.2 from `https://argoproj.github.io/argo-helm` | Argo CD GitOps controller and server: non-root security contexts, requests and limits, Valkey replacement for Redis, probes and notification templates. | dan-petty/homelab#94. |
 | [`argocd-image-updater`](argocd-image-updater/values.yaml) | `argocd-image-updater` 1.4.2 from `https://argoproj.github.io/argo-helm` | Argo CD Image Updater: non-root security context, requests and limits, and metrics. | dan-petty/homelab#94. |
+| [`mattermost-operator`](mattermost-operator/values.yaml) | `mattermost-operator` 1.0.5 from `https://helm.mattermost.com` | Mattermost operator: non-root security context, read-only root filesystem, dropped capabilities. | dan-petty/homelab#93. |
 
 The upstream NetworkPolicies of `external-secrets` have the types `Ingress` and `Egress` in one
 policy, so the template turns them off. The network policy controller of k3s lets an egress rule of
@@ -81,3 +82,23 @@ admits only its finding on its object.
 | KSV-0041 | ClusterRole `argo-cd-argocd-notifications-controller`: the notifications controller accesses Secret credentials for notifications. | 2026-12-23 |
 | KSV-0046 | ClusterRole `argo-cd-argocd-server`: the server views and manages cluster resources. | 2026-12-23 |
 | KSV-0053 | ClusterRole and Role `argo-cd-argocd-server`: the server executes commands in managed pods via web terminal. | 2026-12-23 |
+| KSV-0041 | ClusterRole `mattermost-operator`: the operator manages Secrets for installation credentials. | 2026-12-23 |
+| KSV-0045 | ClusterRole `mattermost-operator`: the operator uses wildcard verbs on installation custom resources. | 2026-12-23 |
+| KSV-0046 | ClusterRole `mattermost-operator`: the operator manages installation custom resources. | 2026-12-23 |
+| KSV-0056 | ClusterRole `mattermost-operator`: the operator configures networking resources for installations. | 2026-12-23 |
+
+## kube-linter judgments
+
+`.kubelinterignore.yaml` holds the written judgments of the kube-linter scan of the K8s renders. Each
+entry names one check on the file of one object of one release, with a reason and an expiry
+date. The K8s job of CI gives the file to the input `kube-linter-ignorefile` of `k8s-validate.yml`,
+and `tests/test-k8s-validate.sh` checks that each entry admits only its finding on its object.
+
+| Check | Object | Expiry |
+| --- | --- | --- |
+| `no-liveness-probe` | Deployment `mattermost-operator`: upstream deployment template omits liveness probe. | 2026-12-23 |
+| `no-readiness-probe` | Deployment `mattermost-operator`: upstream deployment template omits readiness probe. | 2026-12-23 |
+| `no-rolling-update-strategy` | Deployment `mattermost-operator`: upstream deployment template omits update strategy. | 2026-12-23 |
+| `non-existent-service-account` | Deployment `mattermost-operator`: upstream serviceaccount template omits namespace. | 2026-12-23 |
+| `unset-cpu-requirements` | Deployment `mattermost-operator`: upstream deployment template hardcodes no resources. | 2026-12-23 |
+| `unset-memory-requirements` | Deployment `mattermost-operator`: upstream deployment template hardcodes no resources. | 2026-12-23 |

@@ -1,0 +1,28 @@
+# The tests of the values template ../values.yaml. scripts/k8s-validate.sh gives the template to
+# the dependency mattermost-operator with --values (helm/README.md).
+suite: The values template of mattermost-operator
+templates:
+  - charts/mattermost-operator/templates/mattermost-operator/deployment.yaml
+release:
+  name: mattermost-operator
+tests:
+  - it: runs the pod with non-root user and seccomp profile
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+  - it: runs the container with dropped capabilities and read-only root filesystem
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
