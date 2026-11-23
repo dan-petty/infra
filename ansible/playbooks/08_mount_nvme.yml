@@ -1,0 +1,8 @@
+---
+# 08_mount_nvme.yml — Format and mount NVMe data drives
+# The play has no default host: ansible-playbook dan_petty.infra.08_mount_nvme -e target_hosts=<group>.
+- name: Configure and mount NVMe data drives
+  hosts: "{{ target_hosts }}"
+  become: true
+  roles:
+    - role: dan_petty.infra.data_disk

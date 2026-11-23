@@ -1,0 +1,90 @@
+---
+# 06_cluster_backup.yml — K3s cluster state snapshot and configuration backup
+# The play has no default host: ansible-playbook dan_petty.infra.06_cluster_backup -e target_hosts=<group>.
+- name: Snapshot K3s Control Plane & Cluster State
+  hosts: "{{ target_hosts }}"
+  become: true
+  vars:
+    remote_backup_dir: "/var/backups/k3s"
+    local_backup_dest: "{{ playbook_dir }}/../../.backups"
+  tasks:
+    # set_fact pins the timestamp once; a play var with a pipe lookup is re-evaluated by every task
+    - name: Pin backup timestamp for this run
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+
+    - name: Ensure remote and local backup directories exist
+      ansible.builtin.file:
+        path: "{{ remote_backup_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Create local backup directory on control station
+      ansible.builtin.file:
+        path: "{{ local_backup_dest }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+
+    - name: Check if K3s server uses embedded etcd or sqlite
+      ansible.builtin.stat:
+        path: "/var/lib/rancher/k3s/server/db/state.db"
+      register: sqlite_db_stat
+
+    # SQLite's online backup API yields a consistent snapshot of the live WAL-mode database;
+    # a plain file copy of state.db can miss transactions still held in state.db-wal.
+    - name: Snapshot K3s SQLite database
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import sqlite3, sys
+            src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2])
+            src.backup(dst)
+            dst.close()
+            src.close()
+          - /var/lib/rancher/k3s/server/db/state.db
+          - "{{ remote_backup_dir }}/k3s_state_{{ backup_timestamp }}.db"
+        creates: "{{ remote_backup_dir }}/k3s_state_{{ backup_timestamp }}.db"
+      when: sqlite_db_stat.stat.exists
+
+    # Check mode writes no snapshot and no archive, so the tasks that need them run only in a real run.
+    - name: Restrict K3s SQLite snapshot permissions
+      ansible.builtin.file:
+        path: "{{ remote_backup_dir }}/k3s_state_{{ backup_timestamp }}.db"
+        mode: "0600"
+      when:
+        - sqlite_db_stat.stat.exists
+        - not ansible_check_mode
+
+    - name: Snapshot K3s embedded etcd (if active)
+      ansible.builtin.command:
+        cmd: "k3s etcd-snapshot save --name k3s-etcd-{{ backup_timestamp }}"
+      when: not sqlite_db_stat.stat.exists
+      register: etcd_snap
+      changed_when: etcd_snap.rc == 0
+      failed_when: false
+
+    - name: Archive K3s TLS certificates, server tokens, and manifests
+      community.general.archive:
+        path:
+          - /var/lib/rancher/k3s/server/token
+          - /var/lib/rancher/k3s/server/tls
+          - /var/lib/rancher/k3s/server/manifests
+          - "{{ remote_backup_dir }}/k3s_state_{{ backup_timestamp }}.db"
+        dest: "{{ remote_backup_dir }}/k3s_backup_{{ backup_timestamp }}.tar.gz"
+        format: gz
+        mode: "0600"
+
+    - name: Fetch cluster backup archive to local control workstation
+      ansible.builtin.fetch:
+        src: "{{ remote_backup_dir }}/k3s_backup_{{ backup_timestamp }}.tar.gz"
+        dest: "{{ local_backup_dest }}/"
+        flat: true
+      when: not ansible_check_mode
+
+    - name: Output backup archive location
+      ansible.builtin.debug:
+        msg: "Backup completed successfully -> {{ local_backup_dest }}/k3s_backup_{{ backup_timestamp }}.tar.gz"

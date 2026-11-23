@@ -1,0 +1,113 @@
+---
+argument_specs:
+  main:
+    short_description: Baseline configuration for Debian k3s nodes.
+    description:
+      - Configure Debian APT sources using DEB822 format.
+      - Configure GRUB for unattended headless booting.
+      - Install baseline system packages and set up the dedicated Ansible automation user.
+      - Load and persist kernel modules, and apply sysctl parameters for K8s networking.
+      - Configure UFW firewall allowing SSH, k3s cluster CIDRs and optional site CIDRs.
+    options:
+      common_apt_suite:
+        type: str
+        required: true
+        description: The Debian suite (e.g. bookworm, trixie, sid) for DEB822 sources.
+      common_ufw_allowed_cidrs:
+        type: list
+        elements: str
+        default: []
+        description: Additional site CIDR blocks allowed through UFW firewall.
+      common_k3s_pod_cidr:
+        type: str
+        default: "10.42.0.0/16"
+        description: Default k3s pod CIDR block allowed through UFW.
+      common_k3s_service_cidr:
+        type: str
+        default: "10.43.0.0/16"
+        description: Default k3s service CIDR block allowed through UFW.
+      common_base_packages:
+        type: list
+        elements: str
+        default:
+          - curl
+          - wget
+          - git
+          - zstd
+          - htop
+          - iotop
+          - btop
+          - net-tools
+          - iptables
+          - iproute2
+          - socat
+          - conntrack
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - pciutils
+          - lshw
+          - lm-sensors
+          - open-iscsi
+          - ufw
+          - python3-yaml
+          - python3-debian
+          - systemd-timesyncd
+        description: Baseline system packages to install.
+      common_kernel_modules:
+        type: list
+        elements: str
+        default:
+          - overlay
+          - br_netfilter
+          - ip_tables
+          - iptable_nat
+          - iptable_filter
+        description: Kernel modules required for K8s and containerd.
+      common_sysctl_params:
+        type: dict
+        default:
+          net.bridge.bridge-nf-call-iptables: 1
+          net.bridge.bridge-nf-call-ip6tables: 1
+          net.ipv4.ip_forward: 1
+          net.ipv4.conf.all.forwarding: 1
+          fs.inotify.max_user_watches: 524288
+          fs.inotify.max_user_instances: 8192
+          vm.max_map_count: 262144
+        description: Sysctl parameters applied for K8s networking.
+      common_automation_user:
+        type: str
+        default: "ansible"
+        description: Name of the dedicated automation user.
+      common_automation_user_shell:
+        type: str
+        default: "/bin/bash"
+        description: Login shell for the automation user.
+      common_automation_user_groups:
+        type: list
+        elements: str
+        default:
+          - sudo
+        description: Supplementary groups for the automation user.
+      common_automation_user_pubkeys:
+        type: list
+        elements: str
+        default: []
+        description: Authorized SSH public keys for the automation user.
+      common_system_upgrade_on_bootstrap:
+        type: bool
+        default: true
+        description: Whether to execute system package upgrade during run.
+      common_system_upgrade_type:
+        type: str
+        default: "dist"
+        description: Type of apt upgrade (dist or safe).
+      common_system_upgrade_autoremove:
+        type: bool
+        default: true
+        description: Whether to autoremove orphaned packages.
+      common_system_upgrade_clean:
+        type: bool
+        default: true
+        description: Whether to clean apt cache archives.

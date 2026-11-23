@@ -1,0 +1,48 @@
+---
+# user.yml — Dedicated Ansible automation user provisioning
+- name: Ensure automation user primary group exists
+  ansible.builtin.group:
+    name: "{{ common_automation_user }}"
+    state: present
+
+- name: Create dedicated automation user
+  ansible.builtin.user:
+    name: "{{ common_automation_user }}"
+    group: "{{ common_automation_user }}"
+    groups: "{{ common_automation_user_groups }}"
+    append: true
+    shell: "{{ common_automation_user_shell }}"
+    create_home: true
+    state: present
+
+- name: Configure passwordless sudo for automation user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ common_automation_user }}"
+    content: "{{ common_automation_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "/usr/sbin/visudo -cf %s"
+
+- name: Ensure SSH directory exists for automation user
+  ansible.builtin.file:
+    path: "/home/{{ common_automation_user }}/.ssh"
+    state: directory
+    owner: "{{ common_automation_user }}"
+    group: "{{ common_automation_user }}"
+    mode: "0700"
+
+- name: Check the authorized SSH public keys for automation user
+  ansible.builtin.assert:
+    that:
+      - common_automation_user_pubkeys | length > 0
+      - common_automation_user_pubkeys | select | list | length == common_automation_user_pubkeys | length
+    fail_msg: "common_automation_user_pubkeys must hold one or more keys and no empty entry"
+    quiet: true
+
+- name: Deploy authorized SSH public keys for automation user and remove all other keys
+  ansible.posix.authorized_key:
+    user: "{{ common_automation_user }}"
+    key: "{{ common_automation_user_pubkeys | join('\n') }}"
+    exclusive: true
+    state: present

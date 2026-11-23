@@ -1,0 +1,22 @@
+---
+# Test of the role data_disk: the argument check of the role stops a host that has no
+# data_disk_mount_path, before the first task of the role.
+- name: Check that the data_disk role requires data_disk_mount_path
+  hosts: k3s_server
+  gather_facts: false
+  vars:
+    data_disk_device: /dev/null
+  tasks:
+    - name: Run the data_disk role with no data_disk_mount_path
+      block:
+        - name: Run the data_disk role
+          ansible.builtin.include_role:
+            name: dan_petty.infra.data_disk
+      rescue:
+        - name: Check that the argument check named data_disk_mount_path
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.argument_errors is defined
+              - "'data_disk_mount_path' in ansible_failed_result.msg"
+            fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+            quiet: true

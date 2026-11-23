@@ -1,0 +1,38 @@
+---
+# update.yml — System package upgrade and maintenance routine
+- name: Update APT package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
+
+- name: Perform system package upgrade
+  ansible.builtin.apt:
+    upgrade: "{{ common_system_upgrade_type | default('dist') }}"
+  register: common_apt_upgrade_result
+
+- name: Autoremove orphaned packages and purge leftover configs
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true
+  when: common_system_upgrade_autoremove | default(true)
+
+- name: Clean APT package cache archives
+  ansible.builtin.apt:
+    autoclean: true
+  when: common_system_upgrade_clean | default(true)
+
+- name: Check if system reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: common_reboot_required_stat
+
+- name: Display system upgrade and reboot advisory
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - >-
+        Upgrade Status: {{ 'Packages upgraded'
+        if common_apt_upgrade_result.changed else 'System already up to date' }}
+      - >-
+        Reboot Required: {{ 'YES (Reboot recommended to apply kernel/system updates)'
+        if common_reboot_required_stat.stat.exists else 'NO (System running on current kernel)' }}

@@ -1,0 +1,23 @@
+---
+# 09_system_update.yml — Rolling system package upgrade and maintenance routine
+# The play has no default host: ansible-playbook dan_petty.infra.09_system_update -e target_hosts=<group>.
+- name: Execute system package updates across Debian nodes
+  hosts: "{{ target_hosts }}"
+  become: true
+  serial: 1
+  tasks:
+    - name: Enforce Debian APT sources
+      ansible.builtin.include_role:
+        name: dan_petty.infra.common
+        tasks_from: apt_sources.yml
+
+    - name: Enforce NVIDIA APT sources and driver branch pinning
+      ansible.builtin.include_role:
+        name: dan_petty.infra.nvidia
+        tasks_from: apt_sources.yml
+      when: "'gpu_nodes' in group_names"
+
+    - name: Run system update tasks
+      ansible.builtin.include_role:
+        name: dan_petty.infra.common
+        tasks_from: update.yml

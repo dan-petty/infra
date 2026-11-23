@@ -1,0 +1,6 @@
+---
+# Default variables for the data_disk role (meta/argument_specs.yml).
+# Note: data_disk_device and data_disk_mount_path have no defaults and are required.
+
+data_disk_filesystem: "ext4"
+data_disk_mount_options: "defaults,noatime,discard"

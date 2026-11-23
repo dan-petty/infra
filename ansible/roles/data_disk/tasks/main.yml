@@ -1,0 +1,46 @@
+---
+# main.yml — Format and mount dedicated data disk
+- name: Check if target data disk block device exists
+  ansible.builtin.stat:
+    path: "{{ data_disk_device }}"
+  register: data_disk_dev_stat
+
+- name: Fail if target data disk block device is missing
+  ansible.builtin.fail:
+    msg: >-
+      Data disk device {{ data_disk_device }} not found on
+      {{ inventory_hostname }}. Run 'lsblk' to verify device name.
+  when: not data_disk_dev_stat.stat.exists
+
+- name: Format data drive with filesystem if unformatted
+  community.general.filesystem:
+    fstype: "{{ data_disk_filesystem }}"
+    dev: "{{ data_disk_device }}"
+    force: false
+
+- name: Create mount point directory
+  ansible.builtin.file:
+    path: "{{ data_disk_mount_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Mount data drive and configure /etc/fstab entry
+  ansible.posix.mount:
+    path: "{{ data_disk_mount_path }}"
+    src: "{{ data_disk_device }}"
+    fstype: "{{ data_disk_filesystem }}"
+    opts: "{{ data_disk_mount_options }}"
+    state: mounted
+
+- name: Inspect mounted disk space
+  ansible.builtin.command:
+    cmd: "df -h {{ data_disk_mount_path }}"
+  register: data_disk_df_status
+  changed_when: false
+
+- name: Output data disk mount status
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Device: {{ data_disk_device }} -> {{ data_disk_mount_path }}"
+      - "Status: {{ data_disk_df_status.stdout_lines }}"

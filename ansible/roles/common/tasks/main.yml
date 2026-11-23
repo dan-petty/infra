@@ -1,0 +1,114 @@
+---
+# main.yml — Baseline setup for Debian k3s nodes
+- name: Ensure python3-debian and systemd-timesyncd are installed
+  ansible.builtin.apt:
+    name:
+      - python3-debian
+      - systemd-timesyncd
+    state: present
+
+- name: Ensure system clock synchronization service is active
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    state: started
+    enabled: true
+  when: not ansible_check_mode
+
+- name: Configure Debian APT sources
+  ansible.builtin.include_tasks: apt_sources.yml
+
+- name: Configure GRUB for unattended headless boots
+  ansible.builtin.include_tasks: grub.yml
+
+- name: Update APT package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install baseline system packages
+  ansible.builtin.apt:
+    name: "{{ common_base_packages }}"
+    state: present
+
+- name: Provision dedicated ansible automation user
+  ansible.builtin.include_tasks: user.yml
+
+- name: Execute system package upgrades
+  ansible.builtin.include_tasks: update.yml
+  when: common_system_upgrade_on_bootstrap | default(true)
+
+- name: Load required kernel modules for K8s & Containerd
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ common_kernel_modules }}"
+  failed_when: false
+
+- name: Persist kernel modules across reboots
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    content: |
+      {% for mod in common_kernel_modules %}
+      {{ mod }}
+      {% endfor %}
+    mode: "0644"
+
+- name: Apply sysctl parameters for K8s networking
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-k3s-cri.conf
+  loop: "{{ common_sysctl_params | dict2items }}"
+
+- name: Disable swap for Kubernetes stability
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+  failed_when: false
+
+- name: Remove swap entry from /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\s+swap\s+.*)$'
+    replace: '# \1'
+
+- name: Ensure UFW firewall package is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow SSH remote access in UFW
+  community.general.ufw:
+    rule: allow
+    name: "OpenSSH"
+    comment: "SSH administration"
+
+- name: Allow configured site CIDRs in UFW
+  community.general.ufw:
+    rule: allow
+    src: "{{ item }}"
+    comment: "Site CIDR"
+  loop: "{{ common_ufw_allowed_cidrs }}"
+
+- name: Allow K3s Pod and Service CIDRs in UFW
+  community.general.ufw:
+    rule: allow
+    src: "{{ item }}"
+    comment: "K3s cluster CIDRs"
+  loop:
+    - "{{ common_k3s_pod_cidr }}"
+    - "{{ common_k3s_service_cidr }}"
+
+- name: Ensure UFW firewall is enabled with default incoming policy
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Ensure UFW systemd service is active and enabled
+  ansible.builtin.systemd:
+    name: ufw
+    state: started
+    enabled: true
+  when: not ansible_check_mode

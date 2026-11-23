@@ -1,0 +1,18 @@
+---
+# Test of the role common: the defaults give the k3s cluster CIDRs. The import has
+# `when: false`, so no task of the role runs, but the play still gets the defaults of the role.
+- name: Check the defaults of the common role
+  hosts: k3s_server
+  gather_facts: false
+  tasks:
+    - name: Import the common role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.common
+      when: false
+
+    - name: Check the k3s CIDR defaults
+      ansible.builtin.assert:
+        that:
+          - common_k3s_pod_cidr == '10.42.0.0/16'
+          - common_k3s_service_cidr == '10.43.0.0/16'
+        quiet: true

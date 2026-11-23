@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: Format and mount dedicated data disk partitions.
+    description:
+      - Verify existence of target block device.
+      - Format device with target filesystem if unformatted.
+      - Create target mount point directory and mount device with /etc/fstab entry.
+    options:
+      data_disk_device:
+        type: str
+        required: true
+        description: The block device path to format and mount (such as an NVMe device).
+      data_disk_mount_path:
+        type: str
+        required: true
+        description: The directory path where the device will be mounted.
+      data_disk_filesystem:
+        type: str
+        default: "ext4"
+        description: Filesystem type (e.g. ext4, xfs).
+      data_disk_mount_options:
+        type: str
+        default: "defaults,noatime,discard"
+        description: Mount options string for /etc/fstab.
