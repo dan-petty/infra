@@ -38,7 +38,9 @@ The real templates so far are the Renovate presets in `renovate/` (dan-petty/inf
 Ansible roles `common`, `data_disk`, `nvidia`, `gvisor` and `cpu_tuning`, and the generic plays (dan-petty/infra#7, dan-petty/infra#8), the base `k8s/bases/valkey`
 with its components `valkey-persistence`, `valkey-exporter` and `valkey-acl` (dan-petty/infra#13),
 the base `k8s/bases/service-repos` (dan-petty/infra#11, [docs/service-repos.md](docs/service-repos.md)),
+the base `k8s/bases/cloudflared` (dan-petty/infra#16; the upstream chart `cloudflare-tunnel-remote` lacks the required 2-replica default with anti-affinity, fixed Secret name `cloudflared-token`, and PodDisruptionBudget),
 the values template `helm/external-secrets` of External Secrets Operator (dan-petty/infra#12), the
+values templates `helm/cert-manager` and `helm/traefik` (dan-petty/infra#16), the
 OpenTofu modules `aws-eks`, `azure-aks` and `gcp-gke` with their examples (dan-petty/infra#9), and
 the Copier template of a new repository (dan-petty/infra#37, [templates/README.md](templates/README.md)).
 The fixture of `templates/` is each answer set of `tests/test-repository-template.sh`.

@@ -1,0 +1,56 @@
+# Traefik Helm values template (#16).
+# Chart: traefik (42.3.2)
+# Repo:  https://traefik.github.io/charts
+#
+# Traefik ingress controller. Configured with ClusterIP service type so external
+# traffic enters solely through the authenticated Cloudflare Tunnel.
+
+additionalArguments:
+  - "--global.sendanonymoususage=false"
+  - "--global.checknewversion=false"
+
+service:
+  spec:
+    type: ClusterIP
+
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: true
+
+ports:
+  web:
+    forwardedHeaders:
+      insecure: true
+  metrics:
+    port: 9100
+    expose:
+      default: false
+    exposedPort: 9100
+
+api:
+  dashboard: true
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addRoutersLabels: true
+    addServicesLabels: true
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

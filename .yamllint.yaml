@@ -10,6 +10,8 @@ ignore: |
   .terraform/
   charts/*/charts/
   charts/*/templates/
+  helm/*/test-chart/charts/
+  helm/*/test-chart/templates/
 
 rules:
   braces:

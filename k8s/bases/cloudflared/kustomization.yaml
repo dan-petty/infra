@@ -1,0 +1,8 @@
+# The base cloudflared: Cloudflare tunnel connector. The consumer sets the namespace and creates
+# the Secret cloudflared-token with the tunnel token in key token.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
