@@ -186,6 +186,9 @@ jobs:
         helm/argo-workflows/test-chart
         helm/cert-manager/test-chart
         helm/traefik/test-chart
+        helm/loki/test-chart
+        helm/otel-collector/test-chart
+        helm/tempo/test-chart
         helm/prometheus-operator-crds/test-chart
         helm/prometheus/test-chart
         helm/k8s-monitoring/test-chart

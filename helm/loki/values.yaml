@@ -1,0 +1,84 @@
+# Loki Helm values template.
+# Chart: loki (21.2.3)
+# Repo:  https://grafana-community.github.io/helm-charts
+#
+# Loki log aggregation service in Monolithic deployment mode.
+
+deploymentMode: Monolithic
+
+loki:
+  auth_enabled: false
+  analytics:
+    reporting_enabled: false
+  commonConfig:
+    replication_factor: 1
+  pattern_ingester:
+    enabled: true
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+  limits_config:
+    discover_log_levels: true
+    deletion_mode: disabled
+    max_query_parallelism: 4
+    reject_old_samples: true
+
+singleBinary:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
+
+lokiCanary:
+  enabled: false
+
+test:
+  enabled: false
+
+gateway:
+  enabled: false
+
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+memcached:
+  enabled: false
+
+sidecar:
+  rules:
+    enabled: false
+
+defaults:
+  automountServiceAccountToken: false
+
+serviceAccount:
+  automountServiceAccountToken: false
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+backend:
+  replicas: 0

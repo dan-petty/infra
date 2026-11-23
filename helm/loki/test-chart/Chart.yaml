@@ -1,0 +1,11 @@
+apiVersion: v2
+name: test-chart
+description: >-
+  The test chart of the values template helm/loki/values.yaml. It pins the upstream
+  chart loki at one exact version.
+type: application
+version: 0.1.0
+dependencies:
+  - name: loki
+    version: 21.2.3
+    repository: https://grafana-community.github.io/helm-charts

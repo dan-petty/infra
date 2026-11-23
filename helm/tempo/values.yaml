@@ -1,0 +1,35 @@
+# Grafana Tempo Helm values template.
+# Chart: tempo (3.2.1)
+# Repo:  https://grafana-community.github.io/helm-charts
+
+replicas: 1
+
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  automountServiceAccountToken: false
+
+tempo:
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  reportingEnabled: false
+  retention: 168h
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
