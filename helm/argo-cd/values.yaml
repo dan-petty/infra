@@ -83,7 +83,7 @@ redis:
   automountServiceAccountToken: false
   image:
     repository: valkey/valkey
-    tag: 9.1.4-alpine
+    tag: 9.2.0-alpine
   livenessProbe:
     enabled: true
   readinessProbe:
