@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/dan-petty/infra/compare/v0.4.0...v0.5.0) (2026-11-23)
+
+
+### Features
+
+* **deps:** automerge lock file maintenance updates ([#50](https://github.com/dan-petty/infra/issues/50)) ([757c660](https://github.com/dan-petty/infra/commit/757c66006c416c777410ceea2e0fe98f37bde800))
+
 ## [0.4.0](https://github.com/dan-petty/infra/compare/v0.3.0...v0.4.0) (2026-11-23)
 
 
