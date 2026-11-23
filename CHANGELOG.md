@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/dan-petty/infra/compare/v0.17.0...v0.18.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Grafana values template ([#91](https://github.com/dan-petty/infra/issues/91)) ([da2f6ac](https://github.com/dan-petty/infra/commit/da2f6ac9a67d5920791d737d5f92abfed7a9cfa2)), closes [#76](https://github.com/dan-petty/infra/issues/76)
+
 ## [0.17.0](https://github.com/dan-petty/infra/compare/v0.16.0...v0.17.0) (2026-11-23)
 
 
