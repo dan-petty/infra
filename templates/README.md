@@ -27,6 +27,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `release_type` | `simple` | The release type of release-please: `simple`, `python` or `node`. Only `simple` gets `version.txt`. A `python` or `node` repository holds its version in its `pyproject.toml` or `package.json`. Copier asks it only when `release_flow` is `true`. |
 | `scopes` | empty | The Conventional Commit scopes of the repository, separated by commas. Each scope gets a label `scope/<scope>`. The template always adds `ci`, `deps` and `docs`. Copier refuses a scope that is not a lowercase name, and the scope `main` of the release pull request. |
 | `code_owner` | `@dan-petty` | The code owner of each file in `.github/CODEOWNERS`. |
+| `code_coverage` | `false` | Gate pull requests with a `code_coverage` rule in the ruleset `main` of `github/repository.yaml`, with `minimum_coverage: 80`. The default is `false`. Answer `true` for a repository that reports coverage. |
 | `infra_ref` | the tag that Copier renders | Copier does not ask it and does not write it into `.copier-answers.yml`. The default is `_commit`, so the callers of the reusable workflows pin the tag that rendered them. |
 
 ## Files
@@ -62,7 +63,7 @@ body of one endpoint of the GitHub REST API, with the field names of that body:
 | `immutable_releases` | `PUT` or `DELETE /repos/{owner}/{repo}/immutable-releases` | On: nobody can move or delete the tag of a published release. |
 | `code_scanning_default_setup` | `PATCH /repos/{owner}/{repo}/code-scanning/default-setup` | CodeQL default setup, with the languages that GitHub finds. |
 | `actions_workflow_permissions` | `PUT /repos/{owner}/{repo}/actions/permissions/workflow` | The job token can only read, and no workflow approves a pull request. |
-| `rulesets` | `POST /repos/{owner}/{repo}/rulesets`, or `PUT` on the ruleset of the same name | The ruleset `main` on the default branch: no delete, no force push, a pull request with squash only, the CodeQL and Code Quality results, and the required checks. The list of required checks is empty: the command adds each check that reported on the template pull request (devops-cli#6773, decision D3). |
+| `rulesets` | `POST /repos/{owner}/{repo}/rulesets`, or `PUT` on the ruleset of the same name | The ruleset `main` on the default branch: no delete, no force push, a pull request with squash only, the CodeQL and Code Quality results, with `code_coverage=true` the `code_coverage` rule (`minimum_coverage: 80`), and the required checks. The list of required checks is empty: the command adds each check that reported on the template pull request (devops-cli#6773, decision D3). |
 | `environments` | `PUT /repos/{owner}/{repo}/environments/{name}`, then its deployment branch policies, variables and secrets | With the release flow only: the environment `release`, to which only `main` deploys, with the variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY`. |
 
 The file names each variable and secret, and holds no value: the command reads each value from its

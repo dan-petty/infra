@@ -182,7 +182,8 @@
             "pull_request",
             "required_status_checks",
             "code_scanning",
-            "code_quality"
+            "code_quality",
+            "code_coverage"
           ]
         }
       },
@@ -317,6 +318,24 @@
                 "required": ["severity"],
                 "properties": {
                   "severity": { "enum": ["errors", "warnings", "notes", "all"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "code_coverage" } } },
+          "then": {
+            "additionalProperties": false,
+            "required": ["parameters"],
+            "properties": {
+              "type": true,
+              "parameters": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["minimum_coverage"],
+                "properties": {
+                  "minimum_coverage": { "type": "integer", "minimum": 0, "maximum": 100 }
                 }
               }
             }

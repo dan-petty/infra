@@ -61,6 +61,13 @@ code_owner:
     The code owner is a GitHub user or team, such as @dan-petty.
     {% endif %}
 
+code_coverage:
+  type: bool
+  help: >-
+    Gate pull requests with a code_coverage rule in the ruleset main of github/repository.yaml. The
+    default is false. Answer true for a repository that reports coverage.
+  default: false
+
 # The release tag of infra that the callers of the reusable workflows pin. Copier gives _commit, the
 # tag that it renders, so the callers always call the workflows of that tag. Copier does not ask it
 # and does not write it into .copier-answers.yml, so `copier update` gives the callers the new tag.
