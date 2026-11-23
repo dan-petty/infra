@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/dan-petty/infra/compare/v0.15.0...v0.16.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Loki, OTel collector and Tempo values templates ([#83](https://github.com/dan-petty/infra/issues/83)) ([5e9655e](https://github.com/dan-petty/infra/commit/5e9655ef030dc6fb9adc7b67559435feec902e19)), closes [#77](https://github.com/dan-petty/infra/issues/77)
+
 ## [0.15.0](https://github.com/dan-petty/infra/compare/v0.14.0...v0.15.0) (2026-11-23)
 
 
