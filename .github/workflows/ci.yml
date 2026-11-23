@@ -171,6 +171,9 @@ jobs:
         k8s/tests/valkey-acl
         k8s/tests/valkey-full
         k8s/tests/service-repos
+        k8s/tests/default-perimeter
+        k8s/tests/default-perimeter-port
+        k8s/tests/gvisor-runtimeclass
       helm-charts: |
         charts/example
         charts/service-tenant
