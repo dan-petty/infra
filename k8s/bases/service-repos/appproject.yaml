@@ -21,6 +21,8 @@ spec:
     - server: https://kubernetes.default.svc
       namespace: argocd
     - server: https://kubernetes.default.svc
+      namespace: object-store
+    - server: https://kubernetes.default.svc
       namespace: '*'
     - server: https://kubernetes.default.svc
       namespace: '!kube-system'
@@ -50,3 +52,19 @@ spec:
       kind: RoleBinding
     - group: external-secrets.io
       kind: SecretStore
+    - group: seaweed.seaweedfs.com
+      kind: Bucket
+    - group: seaweed.seaweedfs.com
+      kind: S3Identity
+    - group: seaweed.seaweedfs.com
+      kind: S3Policy
+    - group: seaweed.seaweedfs.com
+      kind: S3PolicyBinding
+    - group: seaweed.seaweedfs.com
+      kind: S3Credentials
+    - group: external-secrets.io
+      kind: ExternalSecret
+    - group: external-secrets.io
+      kind: PushSecret
+    - group: generators.external-secrets.io
+      kind: Password

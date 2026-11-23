@@ -1,0 +1,244 @@
+suite: Backup bucket of each tenant namespace
+templates:
+  - templates/backup.yaml
+tests:
+  - it: renders no backup resources when no namespace has backup quota
+    values:
+      - ../ci/test-values.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the five store resources in object-store for one namespace
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: Bucket
+          name: backups-example-db
+          namespace: object-store
+        documentIndex: 3
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3Identity
+          name: backups-example-db
+          namespace: object-store
+        documentIndex: 4
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3Policy
+          name: backups-example-db
+          namespace: object-store
+        documentIndex: 5
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3PolicyBinding
+          name: backups-example-db
+          namespace: object-store
+        documentIndex: 6
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3Credentials
+          name: backups-example-db
+          namespace: object-store
+        documentIndex: 7
+      - equal:
+          path: spec.secretRef.name
+          value: object-store-backup
+        documentIndex: 7
+
+  - it: renders the SecretStore and ServiceAccount in object-store and RoleBinding in the store namespace
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: v1
+          kind: ServiceAccount
+          name: eso-store
+          namespace: object-store
+        documentIndex: 0
+      - containsDocument:
+          apiVersion: external-secrets.io/v1
+          kind: SecretStore
+          name: store
+          namespace: object-store
+        documentIndex: 1
+      - equal:
+          path: spec.provider.kubernetes.remoteNamespace
+          value: example-secrets
+        documentIndex: 1
+      - containsDocument:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          name: eso-store-object-store
+          namespace: example-secrets
+        documentIndex: 2
+      - equal:
+          path: subjects[0]
+          value:
+            kind: ServiceAccount
+            name: eso-store
+            namespace: object-store
+        documentIndex: 2
+
+  - it: renders the client ExternalSecret in the tenant namespace
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          name: object-store-backup
+          namespace: example-db
+        documentIndex: 12
+      - equal:
+          path: metadata.namespace
+          value: example-db
+        documentIndex: 12
+      - equal:
+          path: spec.secretStoreRef.name
+          value: store
+        documentIndex: 12
+      - equal:
+          path: spec.target.name
+          value: object-store-backup
+        documentIndex: 12
+
+  - it: renders two Password generators, materializing ExternalSecret and PushSecret in object-store
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - containsDocument:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: backup-example-db-access-key
+          namespace: object-store
+        documentIndex: 8
+      - containsDocument:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: backup-example-db-secret-key
+          namespace: object-store
+        documentIndex: 9
+      - containsDocument:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          name: backup-example-db
+          namespace: object-store
+        documentIndex: 10
+      - containsDocument:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          name: backup-example-db
+          namespace: object-store
+        documentIndex: 11
+
+  - it: sets the bucket quota from backup.quotaGiB and retain policy with no lifecycle policy
+    values:
+      - ../ci/store-values.yaml
+    asserts:
+      - equal:
+          path: spec.quota.size
+          value: 10Gi
+        documentIndex: 3
+      - equal:
+          path: spec.reclaimPolicy
+          value: Retain
+        documentIndex: 3
+      - notExists:
+          path: spec.anonymousRead
+        documentIndex: 3
+      - notExists:
+          path: spec.expiration
+        documentIndex: 3
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: BucketLifecyclePolicy
+        not: true
+        any: true
+
+  - it: scopes each policy to its own bucket and creates distinct remote keys for two namespaces
+    values:
+      - ../ci/store-values.yaml
+    set:
+      namespaces:
+        - name: app-web
+          backup:
+            quotaGiB: 5
+        - name: app-worker
+          backup:
+            quotaGiB: 15
+    asserts:
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3Policy
+          name: backups-app-web
+          namespace: object-store
+        documentIndex: 5
+      - containsDocument:
+          apiVersion: seaweed.seaweedfs.com/v1
+          kind: S3Policy
+          name: backups-app-worker
+          namespace: object-store
+        documentIndex: 15
+      - equal:
+          path: spec.statements[0].resources
+          value:
+            - backups-app-web
+            - backups-app-web/*
+        documentIndex: 5
+      - equal:
+          path: spec.statements[0].resources
+          value:
+            - backups-app-worker
+            - backups-app-worker/*
+        documentIndex: 15
+      - containsDocument:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          name: backup-app-web
+          namespace: object-store
+        documentIndex: 11
+      - containsDocument:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          name: backup-app-worker
+          namespace: object-store
+        documentIndex: 21
+      - equal:
+          path: spec.updatePolicy
+          value: IfNotExists
+        documentIndex: 11
+      - equal:
+          path: spec.updatePolicy
+          value: IfNotExists
+        documentIndex: 21
+      - equal:
+          path: spec.data[0].match.remoteRef.remoteKey
+          value: app-web.object-store-backup
+        documentIndex: 11
+      - equal:
+          path: spec.data[0].match.remoteRef.remoteKey
+          value: app-worker.object-store-backup
+        documentIndex: 21
+      - containsDocument:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          name: object-store-backup
+          namespace: app-web
+        documentIndex: 12
+      - containsDocument:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          name: object-store-backup
+          namespace: app-worker
+        documentIndex: 22
+      - equal:
+          path: spec.data[0].remoteRef.key
+          value: app-web.object-store-backup
+        documentIndex: 12
+      - equal:
+          path: spec.data[0].remoteRef.key
+          value: app-worker.object-store-backup
+        documentIndex: 22

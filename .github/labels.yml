@@ -95,6 +95,10 @@
   description: "Agent opening beyond the quota allowance; counts as debt until closed"
 
 # ── Scope labels: one per area of this repository ────────────────────────────
+- name: "scope/helm"
+  color: "0F1689"
+  description: "Helm charts, templates, and chart tests"
+
 - name: "scope/k8s"
   color: "326CE5"
   description: "Kubernetes bases, components and Kustomize templates"

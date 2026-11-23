@@ -19,6 +19,11 @@ before the render. This template renders no object: it stops the render when the
 {{- if has .name $seen }}
 {{- fail (printf "service-tenant: the entry names the namespace %q more than one time" .name) }}
 {{- end }}
+{{- if and .backup .backup.quotaGiB }}
+{{- if not (include "service-tenant.store" $) }}
+{{- fail (printf "service-tenant: the namespace %q sets backup.quotaGiB, which requires the secret store (secrets.store)" .name) }}
+{{- end }}
+{{- end }}
 {{- $seen = append $seen .name }}
 {{- end }}
 {{- $checked := $seen }}

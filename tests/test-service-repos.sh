@@ -130,14 +130,22 @@ expect "services-admin: Namespace is the only cluster-scoped kind" "$project" \
   '.spec.clusterResourceWhitelist' '[{"group": "", "kind": "Namespace"}]'
 expect "services-admin: argocd for the AppProjects, and each namespace but the reserved ones" "$project" \
   '[.spec.destinations[] | .namespace]' \
-  '["argocd", "*", "!kube-system", "!kube-public", "!kube-node-lease", "!default", "!monitoring"]'
+  '["argocd", "object-store", "*", "!kube-system", "!kube-public", "!kube-node-lease", "!default", "!monitoring"]'
 expect "services-admin: only the namespaced kinds that the chart renders, with the kinds of the store" "$project" \
   '.spec.namespaceResourceWhitelist' \
   '[{"group": "argoproj.io", "kind": "AppProject"}, {"group": "networking.k8s.io", "kind": "NetworkPolicy"},
     {"group": "", "kind": "LimitRange"}, {"group": "traefik.io", "kind": "Middleware"},
     {"group": "", "kind": "ServiceAccount"}, {"group": "rbac.authorization.k8s.io", "kind": "Role"},
     {"group": "rbac.authorization.k8s.io", "kind": "RoleBinding"},
-    {"group": "external-secrets.io", "kind": "SecretStore"}]'
+    {"group": "external-secrets.io", "kind": "SecretStore"},
+    {"group": "seaweed.seaweedfs.com", "kind": "Bucket"},
+    {"group": "seaweed.seaweedfs.com", "kind": "S3Identity"},
+    {"group": "seaweed.seaweedfs.com", "kind": "S3Policy"},
+    {"group": "seaweed.seaweedfs.com", "kind": "S3PolicyBinding"},
+    {"group": "seaweed.seaweedfs.com", "kind": "S3Credentials"},
+    {"group": "external-secrets.io", "kind": "ExternalSecret"},
+    {"group": "external-secrets.io", "kind": "PushSecret"},
+    {"group": "generators.external-secrets.io", "kind": "Password"}]'
 
 expect "service-repos: in argocd, with only the label selector and the annotation mode" "$updater" \
   '[.metadata.namespace, .spec]' \
@@ -266,7 +274,8 @@ for entry in "$overlay"/services/*.yaml; do
       .kind + " " + .metadata.namespace] | sort' "$work/chart-$name.yaml" >"$work/store-$name.yaml"
     expect "$file: the chart renders the store objects of tenant-$name" "$work/store-$name.yaml" '.' \
       "$(yq '.name as $n | [(.namespaces[] | "SecretStore " + .name), "Role " + $n + "-secrets",
-        (.namespaces[] | "RoleBinding " + $n + "-secrets")] | sort | to_json(0)' "$entry")"
+        (.namespaces[] | "RoleBinding " + $n + "-secrets")] +
+        (if ([.namespaces[] | select(.backup.quotaGiB != null)] | length) > 0 then ["SecretStore object-store", "RoleBinding " + $n + "-secrets"] else [] end) | sort | to_json(0)' "$entry")"
   fi
 done
 

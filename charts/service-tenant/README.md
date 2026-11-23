@@ -9,13 +9,14 @@ deploys only namespaced kinds of an allow-list into those namespaces.
 
 | Object | Content |
 | --- | --- |
-| `Namespace` for each namespace of the entry | `pod-security.kubernetes.io/enforce` from `podSecurity` (default `restricted`). `warn` and `audit` are always `restricted`. The label `monitoring-scrape: "true"`, and the label `backup-client: "true"` when `backup` is `true`. The sync options `Prune=false,Delete=false`. |
+| `Namespace` for each namespace of the entry | `pod-security.kubernetes.io/enforce` from `podSecurity` (default `restricted`). `warn` and `audit` are always `restricted`. The label `monitoring-scrape: "true"`, and the label `backup-client: "true"` when `backup.quotaGiB` is set. The sync options `Prune=false,Delete=false`. |
 | `AppProject` `<name>` in `argocd.namespace` | `sourceRepos`: only `repoURL`. `destinations`: only the namespaces of the entry on `argocd.destinationServer`. `clusterResourceWhitelist: []`. A `namespaceResourceWhitelist` allow-list, then `extraKinds`. `orphanedResources.warn: true`. The annotation `notifications.argoproj.io/subscribe.on-deployed.github`. |
 | `NetworkPolicy` `default-deny-ingress` in each namespace | Type `Ingress` only, with no rule: no ingress. |
 | `NetworkPolicy` `default-deny-egress` in each namespace | Type `Egress` only: DNS on UDP and TCP port 53 to the pods with `dns.podLabels` in `dns.namespace`. |
 | `LimitRange` `default-resources` in each namespace | The `default` and `defaultRequest` CPU and memory of each container, from `limitRange`. |
 | Traefik `Middleware` `security-headers` in each namespace | HSTS for one year with subdomains and no preload, `nosniff`, the frame option `SAMEORIGIN`, the referrer policy `strict-origin-when-cross-origin`, and a permissions policy that stops the camera, the microphone, the location, payments and USB. |
 | The objects of the secret store, when `secrets.store` is `true` | The store namespace `<name>-secrets`, and a `ServiceAccount` `eso-store` and a `SecretStore` `store` in each namespace of the entry ("Secrets"). |
+| The objects of the backup bucket, when a namespace sets `backup.quotaGiB` | The store set in `object-store` (`Bucket`, `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials`), the store `SecretStore` and `ServiceAccount` in `object-store`, the `RoleBinding` in `<name>-secrets`, ESO `Password` generators, `PushSecret`, and the `ExternalSecret` in the namespace ("Backup"). |
 
 The allow-list of the AppProject has these kinds:
 
@@ -96,7 +97,7 @@ Keys of the services entry:
 | `repoURL` | Yes | The git repository of the service. No glob and no `!`. |
 | `path` | Yes | The folder of the manifests of the service in `repoURL`. |
 | `targetRevision` | Yes | The branch, tag or commit that Argo CD deploys. |
-| `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` (`restricted` or `baseline`, default `restricted`) and `backup` (default `false`). |
+| `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` (`restricted` or `baseline`, default `restricted`) and optional `backup.quotaGiB`. |
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. No glob. |
 | `secrets.store` | No | `true` gives the service its secret store ("Secrets"). Default `false`. |
@@ -113,8 +114,23 @@ namespaces:
   - name: example
   - name: example-db
     podSecurity: baseline
-    backup: true
+    backup:
+      quotaGiB: 10
 ```
+
+## Backup
+
+When a namespace sets `backup.quotaGiB`, the chart provisions a backup bucket and credentials. The
+entry must also set `secrets.store: true`.
+
+| Object | Content |
+| --- | --- |
+| `Bucket` `backups-<namespace>` in `object-store` | Quota from `backup.quotaGiB`, `reclaimPolicy: Retain`, no expiration rule, no anonymous access. |
+| `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials` in `object-store` | Access scoped only to bucket `backups-<namespace>`. Credentials synced to Secret `object-store-backup`. |
+| `SecretStore` `store` and `ServiceAccount` `eso-store` in `object-store` | Points to the store namespace `<name>-secrets`. |
+| `RoleBinding` `eso-store-object-store` in `<name>-secrets` | Authorizes `eso-store` in `object-store` to read and write secrets. |
+| Two `Password` generators and one `PushSecret` in `object-store` | Pushes generated key pair to remote key `<namespace>.object-store-backup` with `IfNotExists`. |
+| `ExternalSecret` `object-store-backup` in tenant namespace | Reads back remote key `<namespace>.object-store-backup` into Secret `object-store-backup`. |
 
 ## Guards
 
@@ -123,6 +139,7 @@ The template `guards.yaml` stops the render when the entry:
 - has a `name` of `reservedProjects`, because its AppProject would replace that project;
 - has a namespace of `reservedNamespaces`, `argocd.namespace` or `dns.namespace`, or one namespace
   two times;
+- sets `backup.quotaGiB` when `secrets.store` is false;
 - has the store, and its store namespace `<name>-secrets` has more than 63 characters (a `name` of
   more than 55 characters), is a namespace of the entry, or is a namespace of
   `reservedNamespaces`, `argocd.namespace` or `dns.namespace`;

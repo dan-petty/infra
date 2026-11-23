@@ -62,7 +62,7 @@ stops the sync of `tenant-<name>`.
 | `repoURL` | Yes | The git repository of the service. |
 | `path` | Yes | The folder of the manifests of the service in `repoURL`. For image updates, this is a Kustomize folder. |
 | `targetRevision` | Yes | The branch, tag or commit that Argo CD deploys. |
-| `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` and `backup` (charts/service-tenant/README.md, "Values"). The first namespace is the destination of the service Application. |
+| `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` and `backup.quotaGiB` (charts/service-tenant/README.md, "Values"). The first namespace is the destination of the service Application. |
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. `image` names the tag that Image Updater follows, such as `registry.example.com/example/web:main`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. The chart adds them to the AppProject of the service. |
 | `secrets` | No | `store: true` gives the service its secret store ("Secrets"). Default `store: false`. |
@@ -76,7 +76,8 @@ namespaces:
   - name: example
   - name: example-db
     podSecurity: baseline
-    backup: true
+    backup:
+      quotaGiB: 10
 images:
   - alias: web
     image: registry.example.com/example/web:main
@@ -161,7 +162,7 @@ deploys only the namespaced kinds of the allow-list of the chart and the `extraK
   `SecretStore` and each ESO generator but `Password` in `extraKinds`.
 - Its alert rules, such as a `PrometheusRule` in `extraKinds`, and its dashboards.
 - Its backups, such as a k8up `Schedule` or a CloudNativePG `ScheduledBackup`, in a namespace with
-  `backup: true`.
+  `backup.quotaGiB`.
 
 ## Secrets
 
