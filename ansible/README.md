@@ -25,6 +25,8 @@ gives the hosts and the values.
 | None | `06_cluster_backup.yml` | Snapshot k3s control plane database (SQLite/etcd), archive TLS tokens, certificates and manifests. |
 | None | `09_system_update.yml` | Rolling system package upgrade and maintenance across Debian nodes. |
 | None | `11_secrets_encryption.yml` | Encrypt Kubernetes Secrets at rest on the k3s server (aescbc). |
+| None | `13_crash_capture.yml` | Capture kernel log of a host crash: kdump, hardware watchdog, persistent journal, and optional netconsole. |
+| None | `health_check.yml` | Diagnostic inspection across Debian nodes: uptime, memory, disk, k3s service, and NVIDIA GPU telemetry. |
 | `example` | `example.yml` | Fixtures: they let the Ansible job of CI prove that `ansible-lint` and `ansible-galaxy collection build` run. |
 
 The consumers of `nvidia`, `gvisor` and `cpu_tuning` are the Debian k3s clusters with NVIDIA GPU
