@@ -11,6 +11,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 validate="$root/scripts/k8s-validate.sh"
 ignore="$root/helm/.trivyignore.yaml"
+kl_ignore="$root/helm/.kubelinterignore.yaml"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 failures=0
@@ -175,6 +176,82 @@ run 1 "trivy: the findings fail with no ignore file" env RENDERED="$work/trivy" 
 run 1 "trivy: an ignore file that does not exist stops the step" \
   env RENDERED="$work/trivy" TRIVY_IGNORE_FILE="$work/no-file.yaml" "$validate" trivy
 says "trivy: the step names the ignore file that does not exist" "$work/no-file.yaml does not exist"
+
+# deployment FOLDER NAME: write a Deployment NAME with no probe to the render folder FOLDER.
+deployment() {
+  rm -rf "$work/kube-linter"
+  mkdir -p "$work/kube-linter/$1"
+  cat >"$work/kube-linter/$1/Deployment-$2.yaml" <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $2
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: $2
+  template:
+    metadata:
+      labels:
+        app: $2
+    spec:
+      serviceAccountName: default
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: app:1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 128Mi
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+EOF
+  cat >"$work/kube-linter/$1/NetworkPolicy-$2.yaml" <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: $2
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+EOF
+}
+
+kl_step() {
+  env RENDERED="$work/kube-linter" KUBE_LINTER_IGNORE_FILE="$kl_ignore" "$validate" kube-linter
+}
+
+deployment 1-helm-mattermost-operator mattermost-operator
+run 0 "kube-linter: the accepted no-liveness-probe on Deployment mattermost-operator passes" kl_step
+deployment 1-helm-other other-operator
+run 1 "kube-linter: no-liveness-probe on Deployment other-operator fails" kl_step
+deployment 1-helm-mattermost-operator mattermost-operator
+run 1 "kube-linter: the finding fails with no ignore file" env RENDERED="$work/kube-linter" "$validate" kube-linter
+run 1 "kube-linter: an ignore file that does not exist stops the step" \
+  env RENDERED="$work/kube-linter" KUBE_LINTER_IGNORE_FILE="$work/no-kl-file.yaml" "$validate" kube-linter
+says "kube-linter: the step names the ignore file that does not exist" "$work/no-kl-file.yaml does not exist"
 
 echo "$((cases - failures)) of $cases cases passed"
 [ "$failures" -eq 0 ]

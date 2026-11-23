@@ -30,12 +30,15 @@
 # Inputs (environment variables):
 #   KUSTOMIZE_ROOTS, HELM_CHARTS, PROMTOOL_RULES  one path on each line, relative to the current
 #                                                 folder.
-#   KUBE_LINTER_CONFIG  a kube-linter config file. Empty selects the shared .kube-linter.yaml of the
-#                       infra checkout that holds this script.
-#   TRIVY_IGNORE_FILE   a trivy ignore file (the form of tf/.trivyignore.yaml), which trivy config
-#                       gets with --ignorefile. Empty gives no ignore file.
-#   RENDERED            the folder of the rendered manifests. Empty selects a new temporary folder,
-#                       which only the steps of one run share.
+#   KUBE_LINTER_CONFIG      a kube-linter config file. Empty selects the shared .kube-linter.yaml of the
+#                           infra checkout that holds this script.
+#   KUBE_LINTER_IGNORE_FILE a kube-linter ignore file (the form of helm/.kubelinterignore.yaml), which
+#                           holds the written judgments of the findings that the owner accepted.
+#                           Empty gives no ignore file.
+#   TRIVY_IGNORE_FILE       a trivy ignore file (the form of tf/.trivyignore.yaml), which trivy config
+#                           gets with --ignorefile. Empty gives no ignore file.
+#   RENDERED                the folder of the rendered manifests. Empty selects a new temporary folder,
+#                           which only the steps of one run share.
 set -euo pipefail
 
 infra="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -70,6 +73,7 @@ mapfile -t roots < <(lines "${KUSTOMIZE_ROOTS-}")
 mapfile -t charts < <(lines "${HELM_CHARTS-}")
 mapfile -t rules < <(lines "${PROMTOOL_RULES-}")
 kube_linter_config="${KUBE_LINTER_CONFIG:-$infra/.kube-linter.yaml}"
+kube_linter_ignore_file="${KUBE_LINTER_IGNORE_FILE-}"
 trivy_ignore_file="${TRIVY_IGNORE_FILE-}"
 work="$(mktemp -d)"
 if [ -z "${RENDERED-}" ]; then
@@ -167,6 +171,35 @@ check_kubeconform() {
 }
 
 check_kube_linter() {
+  if [ -n "$kube_linter_ignore_file" ]; then
+    if [ ! -f "$kube_linter_ignore_file" ]; then
+      echo "The kube-linter ignore file $kube_linter_ignore_file does not exist." >&2
+      exit 1
+    fi
+    if rendered; then
+      local today count i check statement expired_at path_count j rel_path match_file
+      today="$(date +%Y-%m-%d)"
+      count="$(yq '.checks | length' "$kube_linter_ignore_file")"
+      for ((i = 0; i < count; i++)); do
+        check="$(yq ".checks[$i].check" "$kube_linter_ignore_file")"
+        statement="$(yq ".checks[$i].statement" "$kube_linter_ignore_file")"
+        expired_at="$(yq ".checks[$i].expired_at" "$kube_linter_ignore_file")"
+        if [ "$today" \> "$expired_at" ]; then
+          echo "The kube-linter judgment for $check expired on $expired_at" >&2
+          exit 1
+        fi
+        path_count="$(yq ".checks[$i].paths | length" "$kube_linter_ignore_file")"
+        for ((j = 0; j < path_count; j++)); do
+          rel_path="$(yq ".checks[$i].paths[$j]" "$kube_linter_ignore_file")"
+          while IFS= read -r match_file; do
+            if [ -n "$match_file" ] && [ -f "$match_file" ]; then
+              yq -i ".metadata.annotations[\"ignore-check.kube-linter.io/$check\"] = \"$statement\"" "$match_file"
+            fi
+          done < <(find "$RENDERED" -path "$RENDERED/$rel_path" 2>/dev/null || true)
+        done
+      done
+    fi
+  fi
   if rendered; then
     kube-linter lint --config "$kube_linter_config" "$RENDERED"
   fi

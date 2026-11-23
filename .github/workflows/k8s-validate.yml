@@ -38,6 +38,12 @@ on:
         description: The kube-linter config file of the caller. Empty selects the shared .kube-linter.yaml of infra.
         type: string
         default: ""
+      kube-linter-ignorefile:
+        description: >-
+          The kube-linter ignore file of the caller, relative to the repository root, which holds
+          the written judgments of the findings that the owner accepted. Empty gives no ignore file.
+        type: string
+        default: ""
       promtool-rules:
         description: The Prometheus rule files to check, one on each line, relative to the repository root.
         type: string
@@ -68,6 +74,7 @@ jobs:
       KUSTOMIZE_ROOTS: ${{ inputs.kustomize-roots }}
       HELM_CHARTS: ${{ inputs.helm-charts }}
       KUBE_LINTER_CONFIG: ${{ inputs.kube-linter-config }}
+      KUBE_LINTER_IGNORE_FILE: ${{ inputs.kube-linter-ignorefile }}
       PROMTOOL_RULES: ${{ inputs.promtool-rules }}
       TRIVY_IGNORE_FILE: ${{ inputs.trivy-ignorefile }}
 
