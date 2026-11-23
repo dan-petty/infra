@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION=44.258.1
+RENOVATE_VERSION=44.258.2
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 work="$(mktemp -d)"
