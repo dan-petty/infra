@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/dan-petty/infra/compare/v0.12.1...v0.13.0) (2026-11-23)
+
+
+### Features
+
+* **ci:** ask whether the ruleset gates coverage ([#74](https://github.com/dan-petty/infra/issues/74)) ([71ea4ce](https://github.com/dan-petty/infra/commit/71ea4cea1216365a62a457c22171f3d75e22c3bb)), closes [#62](https://github.com/dan-petty/infra/issues/62)
+
 ## [0.12.1](https://github.com/dan-petty/infra/compare/v0.12.0...v0.12.1) (2026-11-23)
 
 
