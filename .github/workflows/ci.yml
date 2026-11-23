@@ -257,9 +257,9 @@ jobs:
           install: false
           cache: false
 
-      - name: Install kustomize, yq, helm, kubeconform and trivy
+      - name: Install kustomize, yq, helm, kubeconform, trivy and kube-linter
         timeout-minutes: 3
-        run: mise install --locked kustomize yq helm kubeconform trivy
+        run: mise install --locked kustomize yq helm kubeconform trivy kube-linter
 
       # The test renders the test overlay and the Application templates of the ApplicationSets for
       # each test services entry, and checks them (tests/test-service-repos.sh).
@@ -269,7 +269,7 @@ jobs:
 
       # The test runs the steps of scripts/k8s-validate.sh on fixtures: the render of a test chart
       # and of each object to its own file, the schema of a CRD, and the scope of each entry of
-      # helm/.trivyignore.yaml (tests/test-k8s-validate.sh).
+      # helm/.trivyignore.yaml and helm/.kubelinterignore.yaml (tests/test-k8s-validate.sh).
       - name: Test scripts/k8s-validate.sh
         timeout-minutes: 5
         run: mise exec -- tests/test-k8s-validate.sh
