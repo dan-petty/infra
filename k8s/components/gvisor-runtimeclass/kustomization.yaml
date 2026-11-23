@@ -1,0 +1,5 @@
+# The component gvisor-runtimeclass: generic gVisor RuntimeClass with handler runsc and node selector.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - runtimeclass.yaml

@@ -1,0 +1,6 @@
+# The component default-perimeter: a default-deny NetworkPolicy with DNS egress and monitoring
+# scrape ingress.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - networkpolicy.yaml
