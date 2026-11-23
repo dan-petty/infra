@@ -1,10 +1,11 @@
 name: Release
 
 # release-please makes each release of this repository. On each push to main, the reusable workflow
-# release.yml of infra opens or updates one release pull request. When a person merges it, the next
-# run creates the tag vX.Y.Z and its GitHub release. Its job runs in the environment release, which
-# holds the variable RELEASE_APP_CLIENT_ID and the secret RELEASE_APP_PRIVATE_KEY of the release App,
-# and only main deploys to it (github/repository.yaml). The repository holds no secret of its own.
+# release.yml of infra opens or updates one release pull request and turns on auto-merge. When it
+# merges after its checks pass, the next run creates the tag vX.Y.Z and its GitHub release. Its job
+# runs in the environment release, which holds the variable RELEASE_APP_CLIENT_ID and the secret
+# RELEASE_APP_PRIVATE_KEY of the release App, and only main deploys to it (github/repository.yaml).
+# The repository holds no secret of its own.
 # The caller must pass the secret by name, and the job gets the value of the secret of the
 # environment. The caller passes no other secret: no `secrets: inherit`.
 # The caller pins the release tag of infra that rendered this file, and `copier update` changes it.

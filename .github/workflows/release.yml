@@ -3,7 +3,8 @@ name: Release
 # The release job of a repository, as a reusable workflow. release-please makes each release
 # (README.md, "Releases"). On each push to main it opens or updates one release pull request, which
 # holds the next version in the files of the release-please config of the caller, and the new entry
-# of CHANGELOG.md. When a person merges that pull request, the next run creates the tag vX.Y.Z and
+# of CHANGELOG.md. The workflow turns on auto-merge on the release pull request, and GitHub merges
+# it when its required checks pass. The next run creates the tag vX.Y.Z and
 # its GitHub release. Another repository calls the workflow at a release tag of infra, which
 # Renovate updates (README.md, "Call the reusable workflows"):
 #
@@ -120,3 +121,24 @@ jobs:
           token: ${{ steps.app.outputs.token }}
           config-file: ${{ inputs.config-file }}
           manifest-file: ${{ inputs.manifest-file }}
+
+      # Turn on auto-merge on each release pull request with the token of the release App.
+      # GitHub merges it when its required checks pass. The App token merges so that the push event
+      # of the merge commit starts the release workflow to create the tag and release.
+      - name: Enable auto-merge on the release pull request
+        if: >-
+          steps.release.outputs.releases_created != 'true' &&
+          (steps.release.outputs.pr != '' || steps.release.outputs.prs != '')
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+          RELEASE_PRS: ${{ steps.release.outputs.prs }}
+        run: |
+          numbers=$(echo "$RELEASE_PRS" | jq -r '.[].number // empty' 2>/dev/null || true)
+          if [ -z "$numbers" ]; then
+            numbers=$(echo "$RELEASE_PR" | jq -r '.number // empty' 2>/dev/null || true)
+          fi
+          for num in $numbers; do
+            gh pr merge "$num" --repo "$REPOSITORY" --auto --squash
+          done
