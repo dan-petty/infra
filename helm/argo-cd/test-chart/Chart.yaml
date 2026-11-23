@@ -4,5 +4,5 @@ description: Test chart that pins argo-cd
 version: 0.1.0
 dependencies:
   - name: argo-cd
-    version: 10.18.2
+    version: 10.18.3
     repository: https://argoproj.github.io/argo-helm
