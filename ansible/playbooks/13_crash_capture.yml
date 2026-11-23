@@ -128,7 +128,8 @@
         content: |
           # Managed by Ansible (13_crash_capture.yml): the memory for the kdump kernel. grub-mkconfig reads
           # this file after kdump-tools.cfg. It removes the crashkernel= value of that file and adds this one.
-          GRUB_CMDLINE_LINUX_DEFAULT="$(printf '%s\n' "${GRUB_CMDLINE_LINUX_DEFAULT}" | sed 's/ *crashkernel=[^ ]*//g') crashkernel={{ crash_kernel }}"
+          GRUB_CMDLINE_LINUX_DEFAULT="$(printf '%s\n' "${GRUB_CMDLINE_LINUX_DEFAULT}" |
+            sed 's/ *crashkernel=[^ ]*//g') crashkernel={{ crash_kernel }}"
       notify: Regenerate GRUB
 
     # Remove obsolete hook if present
@@ -285,9 +286,11 @@
     - name: Show the kdump numbers
       ansible.builtin.debug:
         msg: >-
-          Reservation {{ (crash_kdump.reserved / 1048576) | round(1) }} MiB, kdump kernel
-          {{ (crash_kdump.kernel / 1048576) | round(1) }} MiB, kdump initrd {{ (crash_kdump.initrd / 1048576) | round(1) }} MiB,
-          loaded {{ crash_kdump.loaded }}. Running kernel: crashkernel={{ crash_kernel_running }}, play: crashkernel={{ crash_kernel }}.{{-
+          Reservation {{ (crash_kdump.reserved / 1048576) | round(1) }} MiB,
+          kdump kernel {{ (crash_kdump.kernel / 1048576) | round(1) }} MiB,
+          kdump initrd {{ (crash_kdump.initrd / 1048576) | round(1) }} MiB,
+          loaded {{ crash_kdump.loaded }}.
+          Running kernel: crashkernel={{ crash_kernel_running }}, play: crashkernel={{ crash_kernel }}.{{-
             ' Check mode changes nothing, so these are the numbers before the change.' if ansible_check_mode else '' }}
 
     - name: Check that the kdump kernel and initrd fit in the crash reservation
@@ -319,15 +322,26 @@
           - >-
             {{ 'The running kernel has crashkernel=' ~ crash_kernel ~ ': no reboot needed.'
             if crash_kernel_running == crash_kernel
-            else 'Reboot ' ~ inventory_hostname ~ '. The running kernel has crashkernel=' ~ (crash_kernel_running or '(none)')
-            ~ ', and the play sets crashkernel=' ~ crash_kernel ~ '. The kernel reserves this memory only at boot, so the'
-            ~ ' play skipped the fit check and the load check. Before the reboot, grep -o "crashkernel=[^ ]*" /boot/grub/grub.cfg'
-            ~ ' must show crashkernel=' ~ crash_kernel ~ '. Reboot with: ansible ' ~ inventory_hostname ~ ' -m ansible.builtin.reboot'
-            ~ ' (devops infra node restart restarts k3s only, it does not reboot). After the reboot, run the play again: it then runs the checks.' }}
+            else 'Reboot ' ~ inventory_hostname ~ '. The running kernel has crashkernel=' ~
+            (crash_kernel_running or '(none)') ~ ', and the play sets crashkernel=' ~
+            crash_kernel ~ '. The kernel reserves this memory only at boot, so the' ~
+            ' play skipped the fit check and the load check. Before the reboot, grep -o ' ~
+            '"crashkernel=[^ ]*" /boot/grub/grub.cfg must show crashkernel=' ~
+            crash_kernel ~ '. Reboot with: ansible ' ~ inventory_hostname ~
+            ' -m ansible.builtin.reboot (devops infra node restart restarts k3s only, ' ~
+            'it does not reboot). After the reboot, run the play again: it then runs the checks.' }}
           - >-
-            After the reboot, run on the host: cat /proc/cmdline (crashkernel={{ crash_kernel }}),
-            cat /sys/kernel/kexec_crash_size (not 0), sudo kdump-config show (ready to kdump) &&
+            After the reboot, run on the host:
+            cat /proc/cmdline (crashkernel={{ crash_kernel }}),
+            cat /sys/kernel/kexec_crash_size (not 0),
+            sudo kdump-config show (ready to kdump) &&
             sudo systemctl status kdump-tools-dump --no-pager
-          - "Check the hang settings: sysctl kernel.panic_on_rcu_stall kernel.hardlockup_panic && systemctl show -p RuntimeWatchdogUSec"
-          - "Then test the capture on a spare window: echo c | sudo tee /proc/sysrq-trigger (this crashes the host on purpose and reboots it)."
+          - >-
+            Check the hang settings:
+            sysctl kernel.panic_on_rcu_stall kernel.hardlockup_panic &&
+            systemctl show -p RuntimeWatchdogUSec
+          - >-
+            Then test the capture on a spare window:
+            echo c | sudo tee /proc/sysrq-trigger
+            (this crashes the host on purpose and reboots it).
           - "Crash dumps appear in /var/crash. pstore files are saved in /var/lib/systemd/pstore."

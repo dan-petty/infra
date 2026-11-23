@@ -30,8 +30,11 @@
       changed_when: false
 
     - name: Check NVIDIA Driver & GPU status via nvidia-smi
-      ansible.builtin.command:
-        cmd: "nvidia-smi --query-gpu=index,name,temperature.gpu,utilization.gpu,utilization.memory,memory.total,memory.used,power.draw --format=csv,noheader"
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        cmd: >-
+          nvidia-smi
+          --query-gpu=index,name,temperature.gpu,utilization.gpu,utilization.memory,memory.total,memory.used,power.draw
+          --format=csv,noheader
       register: gpu_smi_out
       changed_when: false
       failed_when: false
