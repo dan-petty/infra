@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/dan-petty/infra/compare/v0.8.0...v0.9.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the values templates of the platform services ([#61](https://github.com/dan-petty/infra/issues/61)) ([8edcc33](https://github.com/dan-petty/infra/commit/8edcc33548e3b9d2321bbd7e12e836ceca25ff60))
+
 ## [0.8.0](https://github.com/dan-petty/infra/compare/v0.7.0...v0.8.0) (2026-11-23)
 
 
