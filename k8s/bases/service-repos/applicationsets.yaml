@@ -47,7 +47,7 @@ spec:
       sources:
         - repoURL: https://github.com/dan-petty/infra.git
           path: charts/service-tenant
-          targetRevision: v0.7.0 # x-release-please-version
+          targetRevision: v0.8.0 # x-release-please-version
           helm:
             valueFiles:
               - $values/k8s/argocd/services/tenant-values.yaml
