@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/dan-petty/infra/compare/v0.19.0...v0.20.0) (2026-11-23)
+
+
+### Features
+
+* **helm:** add the Pyroscope values template ([#97](https://github.com/dan-petty/infra/issues/97)) ([6ed2a0e](https://github.com/dan-petty/infra/commit/6ed2a0eb8bbf5085981f7c1b7cc113a4210880e4)), closes [#90](https://github.com/dan-petty/infra/issues/90)
+
 ## [0.19.0](https://github.com/dan-petty/infra/compare/v0.18.0...v0.19.0) (2026-11-23)
 
 
