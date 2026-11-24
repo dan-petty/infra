@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/dan-petty/infra/compare/v0.21.0...v0.21.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **helm:** split service rule globs in prometheus ([#125](https://github.com/dan-petty/infra/issues/125)) ([#126](https://github.com/dan-petty/infra/issues/126)) ([5785bd3](https://github.com/dan-petty/infra/commit/5785bd3957057586c6a5c6cf463f37cfdc8f01c9))
+
 ## [0.21.0](https://github.com/dan-petty/infra/compare/v0.20.1...v0.21.0) (2026-11-24)
 
 
