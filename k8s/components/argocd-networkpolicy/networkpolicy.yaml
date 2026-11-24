@@ -71,6 +71,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
       ports:
         - protocol: TCP
           port: 443
@@ -79,6 +83,11 @@ spec:
         - protocol: TCP
           port: 8443
     # 4. Git and Helm pulls on HTTPS port 443
-    - ports:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
+      ports:
         - protocol: TCP
           port: 443
