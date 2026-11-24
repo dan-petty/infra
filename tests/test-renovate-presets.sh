@@ -66,6 +66,15 @@ else
   failures=$((failures + 1))
 fi
 
+# The abandonmentThreshold of base.json is 18 months (#122).
+cases=$((cases + 1))
+if jq -e '.abandonmentThreshold == "18 months"' "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: abandonmentThreshold is 18 months"
+else
+  echo "FAIL renovate/base.json: abandonmentThreshold is 18 months is missing"
+  failures=$((failures + 1))
+fi
+
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
 mkdir "$work/repo"

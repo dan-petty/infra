@@ -28,7 +28,7 @@
     "osvVulnerabilitySummary": "unresolved",
     "reportAbandonment": true
   },
-  "abandonmentThreshold": "1 year",
+  "abandonmentThreshold": "18 months",
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "labels": ["type/security", "scope/deps"],
