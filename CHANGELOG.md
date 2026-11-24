@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/dan-petty/infra/compare/v0.20.1...v0.21.0) (2026-11-24)
+
+
+### Features
+
+* **deps:** update Renovate abandonment threshold to 18 months ([#123](https://github.com/dan-petty/infra/issues/123)) ([de1907a](https://github.com/dan-petty/infra/commit/de1907a29d453716dd5285601d3188b5efc3b695)), closes [#122](https://github.com/dan-petty/infra/issues/122)
+
 ## [0.20.1](https://github.com/dan-petty/infra/compare/v0.20.0...v0.20.1) (2026-11-24)
 
 
