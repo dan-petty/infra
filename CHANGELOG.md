@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/dan-petty/infra/compare/v0.20.0...v0.20.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **k8s:** allow api server egress in argocd network policy ([#119](https://github.com/dan-petty/infra/issues/119)) ([#120](https://github.com/dan-petty/infra/issues/120)) ([5bbf150](https://github.com/dan-petty/infra/commit/5bbf15047669d2dd37a77e4ba353e5b78f29404b))
+
 ## [0.20.0](https://github.com/dan-petty/infra/compare/v0.19.0...v0.20.0) (2026-11-23)
 
 
