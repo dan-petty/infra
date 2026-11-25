@@ -37,3 +37,22 @@ customChecks:
     params:
       key: ^argocd\.argoproj\.io/sync-options$
       value: ^(.*,)?(Prune=false,(.*,)?Delete=false|Delete=false,(.*,)?Prune=false)(,.*)?$
+  # The network policy controller of k3s (kube-router) skips the ingress rules of a NetworkPolicy
+  # that also has egress rules, for traffic that an egress rule allows (dan-petty/devops-cli#6707).
+  # So egress rules go in a policy of the type Egress only. With no policyTypes, the API server
+  # gives the type Ingress too. A policy of both types with no egress rule, such as a deny of all
+  # traffic, is not affected.
+  - name: network-policy-egress-alone
+    description: Indicates when a NetworkPolicy with egress rules also has the type Ingress.
+    remediation: >-
+      Move the egress rules to a NetworkPolicy of the type Egress only, with the same pod selector.
+    template: cel-expression
+    scope:
+      objectKinds: [Any]
+    params:
+      check: >-
+        object.kind == "NetworkPolicy" &&
+        has(object.spec.egress) && size(object.spec.egress) > 0 &&
+        (!has(object.spec.policyTypes) || size(object.spec.policyTypes) == 0 ||
+          "Ingress" in object.spec.policyTypes)
+        ? "the NetworkPolicy has egress rules and the type Ingress" : ""

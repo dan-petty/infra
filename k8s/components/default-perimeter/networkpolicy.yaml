@@ -1,14 +1,15 @@
 # Default perimeter: deny all ingress and egress, allow egress to DNS in kube-system, and allow
-# ingress from namespace monitoring on TCP port 9090 for metrics scrapes.
+# ingress from namespace monitoring on TCP port 9090 for metrics scrapes. Each policy has one type:
+# the network policy controller of k3s skips the ingress rules of a policy of both types for
+# traffic that an egress rule allows (dan-petty/devops-cli#6707).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: default-perimeter
+  name: default-perimeter-ingress
 spec:
   podSelector: {}
   policyTypes:
     - Ingress
-    - Egress
   ingress:
     - from:
         - namespaceSelector:
@@ -17,6 +18,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-perimeter-egress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
   egress:
     - to:
         - namespaceSelector:

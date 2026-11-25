@@ -16,8 +16,8 @@ The README of each component names its consumers.
 | `valkey-persistence` | The claim `valkey-data` for `/data` of the base `valkey` ([README](../bases/valkey/README.md)). | None yet. Planned: a service queue store. |
 | `valkey-exporter` | The `redis_exporter` sidecar on port 9121 of the base `valkey`, and its NetworkPolicy. | None yet. Planned: dan-petty/homelab#88 and the stores of devops-cli. |
 | `valkey-acl` | The ACL users of the base `valkey` from the Secret `valkey-acl`. | None yet. Planned: the stores of devops-cli. |
-| `default-perimeter` | A default-deny NetworkPolicy with DNS egress and monitoring scrape ingress. | Platform services and dan-petty/homelab#87. |
-| `gvisor-runtimeclass` | The RuntimeClass `gvisor` with handler `runsc` and the gVisor node selector. | Clusters with the gvisor role and dan-petty/homelab#87. |
+| `default-perimeter` | The NetworkPolicies `default-perimeter-ingress` (deny, with the monitoring scrape) and `default-perimeter-egress` (deny, with DNS). | Platform services. |
+| `gvisor-runtimeclass` | The RuntimeClass `gvisor` with handler `runsc`, its memory overhead and the node label of the gvisor role. | Clusters with the gvisor role and dan-petty/homelab#87. |
 | `argocd-networkpolicy` | Generic NetworkPolicies for the argocd namespace: intra-namespace, Traefik ingress, metrics scrape and API/Git egress. | dan-petty/homelab#94. |
 
 A consumer pins a component at a release tag of infra:

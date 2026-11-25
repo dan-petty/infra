@@ -168,8 +168,9 @@ jobs:
 | `trivy-ignorefile` | The trivy ignore file of the caller, in the form of `tf/.trivyignore.yaml`, which `trivy config` gets with `--ignorefile`. Empty gives no ignore file. |
 
 Each path is relative to the root of the caller repository. The shared `.kube-linter.yaml` holds
-the default checks of kube-linter, five more checks and the custom check `pvc-prune-protection`: a
-PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `Delete=false`.
+the default checks of kube-linter, five more checks and two custom checks. `pvc-prune-protection`:
+a PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `Delete=false`.
+`network-policy-egress-alone`: a NetworkPolicy with egress rules must not have the type `Ingress`.
 
 ### `pr-title.yml`
 

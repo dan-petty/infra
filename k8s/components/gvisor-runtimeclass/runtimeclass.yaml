@@ -4,6 +4,12 @@ kind: RuntimeClass
 metadata:
   name: gvisor
 handler: runsc
+# Under runsc, each pod uses 15.1 MiB more memory than under runc, rounded up
+# (dan-petty/devops-cli#5434). The measurement found no CPU overhead.
+overhead:
+  podFixed:
+    memory: 16Mi
+# The role dan_petty.infra.gvisor labels each node where runsc works with this key and value.
 scheduling:
   nodeSelector:
-    node-restriction.kubernetes.io/gvisor: ""
+    node-restriction.kubernetes.io/gvisor: "true"
