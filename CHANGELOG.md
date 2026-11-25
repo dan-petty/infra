@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/dan-petty/infra/compare/v0.22.0...v0.22.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **tf:** renew the GCP-0057 judgment for 3 days ([#150](https://github.com/dan-petty/infra/issues/150)) ([8a34e7e](https://github.com/dan-petty/infra/commit/8a34e7e86478d89757029737392fbb343c192281)), closes [#149](https://github.com/dan-petty/infra/issues/149)
+
 ## [0.22.0](https://github.com/dan-petty/infra/compare/v0.21.1...v0.22.0) (2026-11-25)
 
 
