@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/dan-petty/infra/compare/v0.22.2...v0.23.0) (2026-11-25)
+
+
+### Features
+
+* turn CPU turbo off or on in the role cpu_tuning ([#156](https://github.com/dan-petty/infra/issues/156)) ([446d0b3](https://github.com/dan-petty/infra/commit/446d0b337a359e1b23429d205593eaf7514cbf2c))
+
 ## [0.22.2](https://github.com/dan-petty/infra/compare/v0.22.1...v0.22.2) (2026-11-25)
 
 
