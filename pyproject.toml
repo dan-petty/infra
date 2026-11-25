@@ -11,7 +11,7 @@ dependencies = []
 # The lint tools of CI and pre-commit for the hooks. uv sync installs the dev group by default.
 dev = [
   "ansible-core==2.22.0",
-  "ansible-lint==26.11.0",
+  "ansible-lint==26.11.1",
   "check-jsonschema==0.39.0",
   "copier==9.19.1",
   "pre-commit==4.7.0",
