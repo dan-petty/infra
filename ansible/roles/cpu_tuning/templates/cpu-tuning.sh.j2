@@ -1,5 +1,5 @@
 #!/bin/bash
-# Managed by Ansible (roles/cpu_tuning). Sets the CPU power limits and the disabled idle states that
+# Managed by Ansible (roles/cpu_tuning). Sets the CPU power limits, turbo and the disabled idle states that
 # the host_vars of {{ inventory_hostname }} name, as a BIOS would. cpu-tuning.service runs it at
 # every boot. An idle state that the host_vars do not name is enabled again.
 set -euo pipefail
@@ -18,6 +18,17 @@ echo {{ (cpu_tuning_power_limits.tau_s * 1000000) | int }} > "$rapl/constraint_0
 echo {{ (cpu_tuning_power_limits.pl2_w * 1000000) | int }} > "$rapl/constraint_1_power_limit_uw"
 {% endif %}
 
+{% if cpu_tuning_turbo is defined %}
+# Turbo: intel_pstate has no_turbo (1 is off), the other cpufreq drivers have boost (1 is on). A
+# power limit does not stop a boost clock. A host with neither file is an error.
+cpus=/sys/devices/system/cpu
+if [ -e "$cpus/intel_pstate/no_turbo" ]; then
+  echo {{ 0 if cpu_tuning_turbo else 1 }} > "$cpus/intel_pstate/no_turbo"
+else
+  echo {{ 1 if cpu_tuning_turbo else 0 }} > "$cpus/cpufreq/boost"
+fi
+
+{% endif %}
 # Idle states, by name, so that a change of the state numbering does not disable the wrong state.
 disabled_cpus=" {{ (cpu_tuning_idle_states_disabled.cpus | default([])) | join(' ') }} "
 disabled_states=" {{ (cpu_tuning_idle_states_disabled.states | default([])) | join(' ') }} "
