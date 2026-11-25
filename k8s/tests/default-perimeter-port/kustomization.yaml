@@ -9,7 +9,7 @@ patches:
       group: networking.k8s.io
       version: v1
       kind: NetworkPolicy
-      name: default-perimeter
+      name: default-perimeter-ingress
     patch: |-
       - op: replace
         path: /spec/ingress/0/ports/0/port
