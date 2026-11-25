@@ -24,7 +24,7 @@
 set -euo pipefail
 
 # renovate: datasource=npm depName=renovate
-RENOVATE_VERSION=44.262.2
+RENOVATE_VERSION=44.263.1
 # renovate: datasource=npm depName=release-please
 RELEASE_PLEASE_VERSION=17.11.2
 
