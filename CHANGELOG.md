@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/dan-petty/infra/compare/v0.21.1...v0.22.0) (2026-11-25)
+
+
+### Features
+
+* **deps:** request dan-petty on Renovate and release PRs ([#146](https://github.com/dan-petty/infra/issues/146)) ([2656e73](https://github.com/dan-petty/infra/commit/2656e735f3358bf210cedca71b9029bec3d6cfa9)), closes [#145](https://github.com/dan-petty/infra/issues/145)
+
 ## [0.21.1](https://github.com/dan-petty/infra/compare/v0.21.0...v0.21.1) (2026-11-24)
 
 
