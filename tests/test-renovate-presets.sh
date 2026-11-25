@@ -75,6 +75,19 @@ else
   failures=$((failures + 1))
 fi
 
+# base.json requests dan-petty as a reviewer on each Renovate pull request (#145).
+cases=$((cases + 1))
+if jq -e '
+  ((.vulnerabilityAlerts.reviewers // []) | index("dan-petty") != null)
+  and ((.lockFileMaintenance.reviewers // []) | index("dan-petty") != null)
+  and any(.packageRules[]; (.matchPackageNames // []) == ["*"] and ((.reviewers // []) | index("dan-petty") != null))
+' "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: reviewers includes dan-petty"
+else
+  echo "FAIL renovate/base.json: dan-petty reviewer is missing"
+  failures=$((failures + 1))
+fi
+
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
 mkdir "$work/repo"

@@ -67,11 +67,11 @@ push to `main`, `.github/workflows/release-caller.yml` calls the reusable workfl
 the same commit ("Call the reusable workflows"), which opens or updates one release pull request.
 It holds the next version in `version.txt`, `.release-please-manifest.json` and
 `ansible/galaxy.yml`, the next tag `vX.Y.Z` in `k8s/bases/service-repos/applicationsets.yaml`, and
-the new entry of `CHANGELOG.md`. The workflow turns on auto-merge on the release pull request, and
+the new entry of `CHANGELOG.md`. The workflow turns on auto-merge and requests review (`dan-petty` by default) on the release pull request, and
 GitHub merges it when its required checks pass; a person can also merge it. The next run of
-release-please creates the tag `vX.Y.Z` and its GitHub release. `.github/CODEOWNERS` names `dan-petty`
-as the owner of each file, so GitHub asks dan-petty to review each pull request when it opens, the
-release pull request too. With the repository setting *immutable releases*, nobody can move
+release-please creates the tag `vX.Y.Z` and its GitHub release. `.github/CODEOWNERS` also names
+`dan-petty` as the owner of each file, so GitHub asks dan-petty to review each pull request on
+public repositories. With the repository setting *immutable releases*, nobody can move
 or delete a published tag, so a pin always gets the same content.
 
 release-please reads the type of each commit on `main` since the last release. The largest change

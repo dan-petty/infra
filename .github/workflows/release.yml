@@ -40,6 +40,10 @@ on:
         description: The release-please manifest file of the caller, relative to the repository root.
         type: string
         default: .release-please-manifest.json
+      reviewers:
+        description: Comma-separated GitHub logins to request as reviewers on the release pull request.
+        type: string
+        default: dan-petty
     secrets:
       RELEASE_APP_PRIVATE_KEY:
         description: >-
@@ -122,10 +126,10 @@ jobs:
           config-file: ${{ inputs.config-file }}
           manifest-file: ${{ inputs.manifest-file }}
 
-      # Turn on auto-merge on each release pull request with the token of the release App.
+      # Turn on auto-merge and request reviewers on each release pull request with the release App token.
       # GitHub merges it when its required checks pass. The App token merges so that the push event
       # of the merge commit starts the release workflow to create the tag and release.
-      - name: Enable auto-merge on the release pull request
+      - name: Enable auto-merge and request review on the release pull request
         if: >-
           steps.release.outputs.releases_created != 'true' &&
           (steps.release.outputs.pr != '' || steps.release.outputs.prs != '')
@@ -134,6 +138,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           RELEASE_PR: ${{ steps.release.outputs.pr }}
           RELEASE_PRS: ${{ steps.release.outputs.prs }}
+          REVIEWERS: ${{ inputs.reviewers }}
         run: |
           numbers=$(echo "$RELEASE_PRS" | jq -r '.[].number // empty' 2>/dev/null || true)
           if [ -z "$numbers" ]; then
@@ -141,4 +146,17 @@ jobs:
           fi
           for num in $numbers; do
             gh pr merge "$num" --repo "$REPOSITORY" --auto --squash
+            if [ -n "$REVIEWERS" ]; then
+              pull_json=$(gh api "repos/$REPOSITORY/pulls/$num")
+              IFS=',' read -ra wanted <<< "$REVIEWERS"
+              for reviewer in "${wanted[@]}"; do
+                reviewer="${reviewer//[[:space:]]/}"
+                [ -z "$reviewer" ] && continue
+                if jq -e --arg r "$reviewer" \
+                  '(.user.login != $r) and (([.requested_reviewers[]?.login] | index($r)) == null)' \
+                  <<<"$pull_json" >/dev/null; then
+                  gh api "repos/$REPOSITORY/pulls/$num/requested_reviewers" -f "reviewers[]=$reviewer" >/dev/null
+                fi
+              done
+            fi
           done
