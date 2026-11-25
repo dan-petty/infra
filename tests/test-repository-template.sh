@@ -214,6 +214,9 @@ expect "the release caller passes each secret of the reusable release workflow" 
 check "release workflow enables auto-merge on the release pull request" \
   yq -e '.jobs.release-please.steps[] | select(.name == "Enable auto-merge on the release pull request")' \
   "$root/.github/workflows/release.yml"
+check "release workflow requests review on the release pull request" \
+  yq -e '.jobs.release-please.steps[] | select(.name == "Request review on the release pull request")' \
+  "$root/.github/workflows/release.yml"
 
 # Copier refuses a scope that is not a lowercase name, and the scope main of the release pull request.
 for scopes in "Bad Scope" "api,main"; do

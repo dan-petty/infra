@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "The shared Renovate preset of the repositories of dan-petty: the schedule, the groups, the labels, the commit messages, the vulnerability alerts and the automerge of each update after all checks pass. A repository extends it with github>dan-petty/infra//renovate/base. A repository with Kubernetes manifests under k8s/ also extends github>dan-petty/infra//renovate/k8s.",
+  "description": "The shared Renovate preset of the repositories of dan-petty: the schedule, the groups, the labels, the reviewers, the commit messages, the vulnerability alerts and the automerge of each update after all checks pass. A repository extends it with github>dan-petty/infra//renovate/base. A repository with Kubernetes manifests under k8s/ also extends github>dan-petty/infra//renovate/k8s.",
   "extends": [
     "config:recommended"
   ],
@@ -39,13 +39,15 @@
     "separateMajorMinor": false,
     "automerge": true,
     "automergeType": "pr",
-    "platformAutomerge": false
+    "platformAutomerge": false,
+    "reviewers": ["dan-petty"]
   },
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["* * * * 1"],
     "commitMessageAction": "lock file maintenance",
-    "automerge": true
+    "automerge": true,
+    "reviewers": ["dan-petty"]
   },
   "pin": {
     "commitMessageAction": "pin"
@@ -110,7 +112,8 @@
       "matchPackageNames": ["*"],
       "automerge": true,
       "automergeType": "pr",
-      "platformAutomerge": false
+      "platformAutomerge": false,
+      "reviewers": ["dan-petty"]
     },
     {
       "description": "These images publish several tags a day, so even a patch waits for the schedule.",
