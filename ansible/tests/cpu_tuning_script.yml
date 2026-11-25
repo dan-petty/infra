@@ -28,12 +28,34 @@
           - "'disabled_states=\" C6 C8 \"' in cpu_tuning_script"
         quiet: true
 
+    - name: Check the script with turbo off
+      vars:
+        cpu_tuning_turbo: false
+        cpu_tuning_script: "{{ lookup('ansible.builtin.template', cpu_tuning_template) }}"
+      ansible.builtin.assert:
+        that:
+          - "'echo 1 > \"$cpus/intel_pstate/no_turbo\"' in cpu_tuning_script"
+          - "'echo 0 > \"$cpus/cpufreq/boost\"' in cpu_tuning_script"
+          - "'intel_rapl_msr' not in cpu_tuning_script"
+        quiet: true
+
+    - name: Check the script with turbo on
+      vars:
+        cpu_tuning_turbo: true
+        cpu_tuning_script: "{{ lookup('ansible.builtin.template', cpu_tuning_template) }}"
+      ansible.builtin.assert:
+        that:
+          - "'echo 0 > \"$cpus/intel_pstate/no_turbo\"' in cpu_tuning_script"
+          - "'echo 1 > \"$cpus/cpufreq/boost\"' in cpu_tuning_script"
+        quiet: true
+
     - name: Check the script with no setting
       vars:
         cpu_tuning_script: "{{ lookup('ansible.builtin.template', cpu_tuning_template) }}"
       ansible.builtin.assert:
         that:
           - "'intel_rapl_msr' not in cpu_tuning_script"
+          - "'no_turbo' not in cpu_tuning_script"
           - "'disabled_cpus=\"  \"' in cpu_tuning_script"
           - "'disabled_states=\"  \"' in cpu_tuning_script"
         quiet: true
