@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.2](https://github.com/dan-petty/infra/compare/v0.22.1...v0.22.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* split perimeter types and fix the gVisor RuntimeClass ([#152](https://github.com/dan-petty/infra/issues/152)) ([96f0d40](https://github.com/dan-petty/infra/commit/96f0d400e4368305454d7eb70d216b1e9a0de83d))
+
 ## [0.22.1](https://github.com/dan-petty/infra/compare/v0.22.0...v0.22.1) (2026-11-25)
 
 
