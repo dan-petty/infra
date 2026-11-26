@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.3](https://github.com/dan-petty/infra/compare/v0.24.2...v0.24.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ci:** accept the shared title scopes in each repository ([#190](https://github.com/dan-petty/infra/issues/190)) ([849c79e](https://github.com/dan-petty/infra/commit/849c79ed0d86674b1d5d442c60d00d36b1c6a6e0))
+
 ## [0.24.2](https://github.com/dan-petty/infra/compare/v0.24.1...v0.24.2) (2026-11-26)
 
 
