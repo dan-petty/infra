@@ -271,7 +271,8 @@ To change a version, edit `mise.toml` and run `mise lock --platform linux-x64,li
 
 `.github/workflows/ci.yml` runs on each pull request, each push to `main` and each manual run
 (`workflow_dispatch`). A job runs only when a change touches the files of its tool. A manual run
-runs every job. To run a job locally, run its command from the repository root:
+runs every job. The check `K8s` always reports, with the result of the validation job `K8s run`,
+so a ruleset can require it. To run a job locally, run its command from the repository root:
 
 | Job | Command |
 | --- | --- |
@@ -282,7 +283,7 @@ runs every job. To run a job locally, run its command from the repository root:
 | OpenTofu | `mise exec -- tofu fmt -check -recursive tf/`, `mise exec -- tflint --recursive --config "$PWD/.tflint.hcl"`, in each folder of `tf/examples/`: `mise exec -- trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile tf/.trivyignore.yaml --skip-dirs '**/.terraform' --tf-vars <folder>/<name>.tfvars.example <folder>` (with no `--tf-vars` for a folder that has no such file; a bare `trivy config tf/` gets no variable values and reports GCP-0061), then `tofu init -backend=false` and `tofu validate`, and `mise exec -- tests/test-trivyignore.sh` |
 | Ansible | `../.venv/bin/ansible-lint` and `../.venv/bin/ansible-galaxy collection build` in `ansible/`, and `tests/test-ansible-collection.sh` |
 | YAML | `.venv/bin/yamllint --strict .` and `.venv/bin/zizmor --offline .github/workflows/` |
-| actionlint | `mise exec -- actionlint` and `mise exec -- tests/test-pr-title-scopes.sh` |
+| actionlint | `mise exec -- actionlint`, `mise exec -- tests/test-pr-title-scopes.sh` and `mise exec -- tests/test-ci-check-names.sh` |
 | shellcheck | `git ls-files -z '*.sh' \| xargs -0 mise exec -- shellcheck` |
 | Renovate presets | `mise exec -- tests/test-renovate-presets.sh`, with a GitHub token in `RENOVATE_GITHUB_COM_TOKEN` for the lookup ([renovate/README.md](renovate/README.md#test)) |
 | Repository template | `mise exec -- tests/test-repository-template.sh` ([templates/README.md](templates/README.md#test)) |
