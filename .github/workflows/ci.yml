@@ -500,8 +500,8 @@ jobs:
         timeout-minutes: 2
         run: mise exec -- actionlint
 
-      # The script gives the reusable workflow pr-title.yml the scopes of the labels file of the
-      # caller (tests/test-pr-title-scopes.sh).
+      # The script gives the reusable workflow pr-title.yml the scopes of every repository and of the
+      # labels file of the caller (tests/test-pr-title-scopes.sh).
       - name: Test scripts/pr-title-scopes.sh
         timeout-minutes: 2
         run: mise exec -- tests/test-pr-title-scopes.sh

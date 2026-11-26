@@ -178,11 +178,19 @@ a PersistentVolumeClaim must have the Argo CD sync options `Prune=false` and `De
 [action-semantic-pull-request](https://github.com/amannn/action-semantic-pull-request): a
 Conventional Commit, with a summary of at most 60 characters ("Releases"). For a pull request with
 one commit, it also checks the subject of the commit (`validateSingleCommit`), because the squash
-commit then gets that subject. The scope is optional. The scopes are the name after `scope/` of
-each `scope/*` label of the `.github/labels.yml` of the caller, and `main`, the scope of the release
-pull request. The job reads the labels file of the commit of the run with
-`scripts/pr-title-scopes.sh` of its infra commit, so a new scope label needs no change of the
-workflow. When the labels file is missing, the job stops with an error that names it.
+commit then gets that subject. Each type of Conventional Commits is allowed, and the scope is
+optional. The scopes are the name after `scope/` of each `scope/*` label of the
+`.github/labels.yml` of the caller, and these scopes of every repository, which need no label:
+
+| Scope | Writer |
+| --- | --- |
+| `ci`, `deps`, `docs` | The repository template and the updates of Renovate, such as `chore(deps)` |
+| `main` | The release pull request of release-please |
+| `spec` | The plan pull request of devops-cli, such as `docs(spec)` |
+
+The job reads the labels file of the commit of the run with `scripts/pr-title-scopes.sh` of its
+infra commit, so a new scope label needs no change of the workflow. When the labels file is
+missing, the job stops with an error that names it.
 
 ```yaml
 on:

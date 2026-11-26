@@ -19,8 +19,14 @@ extends a preset in its `renovate.json`. infra itself extends them with the `loc
 }
 ```
 
-The rules of `base.json` are the rules of the devops-cli preset `.github/renovate/base.json` at
-devops-cli commit `4ff4b7c5d`. Only the description is different.
+`base.json` started from the rules of the devops-cli preset `.github/renovate/base.json` at
+devops-cli commit `4ff4b7c5d`.
+
+The title check allows a summary of at most 60 characters (README.md, "Releases"), so `base.json`
+shortens a long name in the title. An action and a devcontainer feature lose the leading part of
+their reference. A container image with a registry host is named by the last two parts of its
+reference: `ghcr.io/example/app/service` is `app/service`. A digest update of such an image leaves
+out the tag. The body of the pull request holds the full name.
 
 ## Test
 
