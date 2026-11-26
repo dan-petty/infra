@@ -91,48 +91,47 @@ tests:
           kind: ExternalSecret
           name: object-store-backup
           namespace: example-db
-        documentIndex: 12
+        documentIndex: 9
       - equal:
           path: metadata.namespace
           value: example-db
-        documentIndex: 12
+        documentIndex: 9
       - equal:
           path: spec.secretStoreRef.name
           value: store
-        documentIndex: 12
+        documentIndex: 9
       - equal:
           path: spec.target.name
           value: object-store-backup
-        documentIndex: 12
+        documentIndex: 9
 
-  - it: renders two Password generators, materializing ExternalSecret and PushSecret in object-store
+  - it: leaves the key Secret to S3Credentials, with no generator and no second writer
     values:
       - ../ci/store-values.yaml
     asserts:
+      - hasDocuments:
+          count: 10
       - containsDocument:
           apiVersion: generators.external-secrets.io/v1alpha1
           kind: Password
-          name: backup-example-db-access-key
-          namespace: object-store
-        documentIndex: 8
-      - containsDocument:
-          apiVersion: generators.external-secrets.io/v1alpha1
-          kind: Password
-          name: backup-example-db-secret-key
-          namespace: object-store
-        documentIndex: 9
+        not: true
+        any: true
       - containsDocument:
           apiVersion: external-secrets.io/v1
           kind: ExternalSecret
-          name: backup-example-db
           namespace: object-store
-        documentIndex: 10
+        not: true
+        any: true
       - containsDocument:
           apiVersion: external-secrets.io/v1alpha1
           kind: PushSecret
           name: backup-example-db
           namespace: object-store
-        documentIndex: 11
+        documentIndex: 8
+      - equal:
+          path: spec.selector.secret.name
+          value: object-store-backup
+        documentIndex: 8
 
   - it: sets the bucket quota from backup.quotaGiB and retain policy with no lifecycle policy
     values:
@@ -181,7 +180,7 @@ tests:
           kind: S3Policy
           name: backups-app-worker
           namespace: object-store
-        documentIndex: 15
+        documentIndex: 12
       - equal:
           path: spec.statements[0].resources
           value:
@@ -193,52 +192,52 @@ tests:
           value:
             - backups-app-worker
             - backups-app-worker/*
-        documentIndex: 15
+        documentIndex: 12
       - containsDocument:
           apiVersion: external-secrets.io/v1alpha1
           kind: PushSecret
           name: backup-app-web
           namespace: object-store
-        documentIndex: 11
+        documentIndex: 8
       - containsDocument:
           apiVersion: external-secrets.io/v1alpha1
           kind: PushSecret
           name: backup-app-worker
           namespace: object-store
-        documentIndex: 21
+        documentIndex: 15
       - equal:
           path: spec.updatePolicy
-          value: IfNotExists
-        documentIndex: 11
+          value: Replace
+        documentIndex: 8
       - equal:
           path: spec.updatePolicy
-          value: IfNotExists
-        documentIndex: 21
+          value: Replace
+        documentIndex: 15
       - equal:
           path: spec.data[0].match.remoteRef.remoteKey
           value: app-web.object-store-backup
-        documentIndex: 11
+        documentIndex: 8
       - equal:
           path: spec.data[0].match.remoteRef.remoteKey
           value: app-worker.object-store-backup
-        documentIndex: 21
+        documentIndex: 15
       - containsDocument:
           apiVersion: external-secrets.io/v1
           kind: ExternalSecret
           name: object-store-backup
           namespace: app-web
-        documentIndex: 12
+        documentIndex: 9
       - containsDocument:
           apiVersion: external-secrets.io/v1
           kind: ExternalSecret
           name: object-store-backup
           namespace: app-worker
-        documentIndex: 22
+        documentIndex: 16
       - equal:
           path: spec.data[0].remoteRef.key
           value: app-web.object-store-backup
-        documentIndex: 12
+        documentIndex: 9
       - equal:
           path: spec.data[0].remoteRef.key
           value: app-worker.object-store-backup
-        documentIndex: 22
+        documentIndex: 16

@@ -16,7 +16,7 @@ deploys only namespaced kinds of an allow-list into those namespaces.
 | `LimitRange` `default-resources` in each namespace | The `default` and `defaultRequest` CPU and memory of each container, from `limitRange`. |
 | Traefik `Middleware` `security-headers` in each namespace | HSTS for one year with subdomains and no preload, `nosniff`, the frame option `SAMEORIGIN`, the referrer policy `strict-origin-when-cross-origin`, and a permissions policy that stops the camera, the microphone, the location, payments and USB. |
 | The objects of the secret store, when `secrets.store` is `true` | The store namespace `<name>-secrets`, and a `ServiceAccount` `eso-store` and a `SecretStore` `store` in each namespace of the entry ("Secrets"). |
-| The objects of the backup bucket, when a namespace sets `backup.quotaGiB` | The store set in `object-store` (`Bucket`, `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials`), the store `SecretStore` and `ServiceAccount` in `object-store`, the `RoleBinding` in `<name>-secrets`, ESO `Password` generators, `PushSecret`, and the `ExternalSecret` in the namespace ("Backup"). |
+| The objects of the backup bucket, when a namespace sets `backup.quotaGiB` | The store set in `object-store` (`Bucket`, `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials`), the store `SecretStore` and `ServiceAccount` in `object-store`, the `RoleBinding` in `<name>-secrets`, `PushSecret`, and the `ExternalSecret` in the namespace ("Backup"). |
 
 The allow-list of the AppProject has these kinds:
 
@@ -126,10 +126,10 @@ entry must also set `secrets.store: true`.
 | Object | Content |
 | --- | --- |
 | `Bucket` `backups-<namespace>` in `object-store` | Quota from `backup.quotaGiB`, `reclaimPolicy: Retain`, no expiration rule, no anonymous access. |
-| `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials` in `object-store` | Access scoped only to bucket `backups-<namespace>`. Credentials synced to Secret `object-store-backup`. |
+| `S3Identity`, `S3Policy`, `S3PolicyBinding`, `S3Credentials` in `object-store` | Access scoped only to bucket `backups-<namespace>`. The operator makes the key pair and owns its Secret `object-store-backup` (`<namespace>-object-store-backup` when 2 or more namespaces have a backup). No other object writes that Secret. |
 | `SecretStore` `store` and `ServiceAccount` `eso-store` in `object-store` | Points to the store namespace `<name>-secrets`. |
 | `RoleBinding` `eso-store-object-store` in `<name>-secrets` | Authorizes `eso-store` in `object-store` to read and write secrets. |
-| Two `Password` generators and one `PushSecret` in `object-store` | Pushes generated key pair to remote key `<namespace>.object-store-backup` with `IfNotExists`. |
+| `PushSecret` in `object-store` | Writes the key pair that the SeaweedFS operator made to remote key `<namespace>.object-store-backup`, with `updatePolicy: Replace`. |
 | `ExternalSecret` `object-store-backup` in tenant namespace | Reads back remote key `<namespace>.object-store-backup` into Secret `object-store-backup`. |
 
 ## Guards
