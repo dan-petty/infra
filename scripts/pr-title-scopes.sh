@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # The scopes of the pull request title check of the reusable workflow .github/workflows/pr-title.yml.
 # The script reads a labels file in the form of .github/labels.yml (a list of labels, each with a
-# name), and prints, one on each line, the name after "scope/" of each scope/* label, and then
-# `main`, the scope of the release pull request of release-please. Each scope comes one time. A
-# local run gives the same list as the workflow:
+# name), and prints, one on each line, the name after "scope/" of each scope/* label, and then the
+# scopes of every repository, which need no label: ci, deps and docs of the repository template and
+# the updates of Renovate, main of the release pull request of release-please, and spec of the plan
+# pull request of devops-cli. Each scope comes one time. A local run gives the same list as the
+# workflow:
 #
 #   mise exec -- scripts/pr-title-scopes.sh .github/labels.yml
 set -euo pipefail
@@ -24,4 +26,5 @@ if [ "$(yq 'type' "$file")" != '!!seq' ]; then
 fi
 
 # A name that is not a string is no label name, so it gives no scope.
-yq '[(.[] | .name | select(tag == "!!str" and test("^scope/")) | sub("^scope/"; "")), "main"] | unique | .[]' "$file"
+yq '[(.[] | .name | select(tag == "!!str" and test("^scope/")) | sub("^scope/"; "")),
+  "ci", "deps", "docs", "main", "spec"] | unique | .[]' "$file"

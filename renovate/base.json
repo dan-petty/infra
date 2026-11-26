@@ -133,6 +133,12 @@
       "dependencyDashboardApproval": true
     },
     {
+      "description": "An image with a registry host is named by the last two parts of its reference, and a digest update leaves out the tag, so the title stays within 60 characters. The rule of the devcontainer features comes after this rule and replaces its name.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^[^/]*\\.[^/]*\\//"],
+      "commitMessageTopic": "{{{replace '^(.*/)?([^/]+/[^/]+)$' '$2' depName}}} {{#if (equals updateType 'digest')}}Docker digest{{else}}Docker tag{{/if}}"
+    },
+    {
       "description": "An action dependency names itself without the word action, so the title stays within 60 characters.",
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action"],

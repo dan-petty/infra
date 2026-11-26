@@ -1,7 +1,8 @@
 # The labels of this repository only. `devops repos onboard` adds each label that is missing on
 # GitHub. The workflow labels, such as type/* and status/*, come from devops-cli. Intake gives an
 # issue the scope/* label of its Conventional Commit scope, and the PR title check accepts each
-# scope of this file. Each scope/* label is gray (DCDCD6), as in devops-cli.
+# scope of this file. In every repository it also accepts ci, deps, docs, main and spec, with or
+# without a label. Each scope/* label is gray (DCDCD6), as in devops-cli.
 {%- set template_scopes = ['ci', 'deps', 'docs'] %}
 {%- set own_scopes = scopes.split(',') | map('trim') | reject('equalto', '')
   | reject('in', template_scopes) | unique | list %}

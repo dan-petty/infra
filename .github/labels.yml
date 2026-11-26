@@ -126,3 +126,19 @@
 - name: "scope/deps"
   color: "DCDCD6"
   description: "Dependency pins, upgrades and the supply chain"
+
+- name: "scope/security"
+  color: "DCDCD6"
+  description: "Security checks, Trivy findings and credential protection"
+
+- name: "scope/terraform"
+  color: "DCDCD6"
+  description: "OpenTofu roots and modules, the long form of scope/tf"
+
+- name: "scope/templates"
+  color: "DCDCD6"
+  description: "Copier templates of a new repository"
+
+- name: "scope/tools"
+  color: "DCDCD6"
+  description: "Tool installation, mise and pre-commit tools"
