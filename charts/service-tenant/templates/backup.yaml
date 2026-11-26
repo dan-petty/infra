@@ -4,9 +4,10 @@ The store resources and the client key live in object-store because seaweedfs-op
 that namespace. When any namespace sets backup.quotaGiB, the chart renders the store SecretStore
 and eso-store ServiceAccount in object-store, and a RoleBinding in <name>-secrets. For each
 backup namespace, the chart renders the store set (Bucket, S3Identity, S3Policy, S3PolicyBinding,
-S3Credentials) through the reusable template service-tenant.backupStore, two Password generators, one
-materializing ExternalSecret, one PushSecret to remote key <namespace>.object-store-backup, and one
-read-back ExternalSecret in the tenant namespace.
+S3Credentials) through the reusable template service-tenant.backupStore, one PushSecret to remote key
+<namespace>.object-store-backup, and one read-back ExternalSecret in the tenant namespace.
+seaweedfs-operator makes the key pair and owns its Secret: no other object writes that Secret. The
+PushSecret replaces the remote key, so the tenant copy follows the key pair of the operator.
 */ -}}
 {{- if .Values.name }}
 {{- $backups := list }}
@@ -69,58 +70,6 @@ subjects:
 {{- end }}
 {{- include "service-tenant.backupStore" (dict "namespace" .name "quotaGiB" .backup.quotaGiB "secretName" $secretName "root" $) }}
 ---
-apiVersion: generators.external-secrets.io/v1alpha1
-kind: Password
-metadata:
-  name: backup-{{ .name }}-access-key
-  namespace: object-store
-  labels:
-    {{- include "service-tenant.labels" $ | nindent 4 }}
-spec:
-  length: 24
-  allowRepeat: true
-  noUpper: false
-  secretKeys:
-    - accessKey
----
-apiVersion: generators.external-secrets.io/v1alpha1
-kind: Password
-metadata:
-  name: backup-{{ .name }}-secret-key
-  namespace: object-store
-  labels:
-    {{- include "service-tenant.labels" $ | nindent 4 }}
-spec:
-  length: 40
-  allowRepeat: true
-  noUpper: false
-  secretKeys:
-    - secretKey
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: backup-{{ .name }}
-  namespace: object-store
-  labels:
-    {{- include "service-tenant.labels" $ | nindent 4 }}
-spec:
-  refreshInterval: "0"
-  target:
-    name: {{ $secretName }}
-    creationPolicy: Owner
-  dataFrom:
-    - sourceRef:
-        generatorRef:
-          apiVersion: generators.external-secrets.io/v1alpha1
-          kind: Password
-          name: backup-{{ .name }}-access-key
-    - sourceRef:
-        generatorRef:
-          apiVersion: generators.external-secrets.io/v1alpha1
-          kind: Password
-          name: backup-{{ .name }}-secret-key
----
 apiVersion: external-secrets.io/v1alpha1
 kind: PushSecret
 metadata:
@@ -129,7 +78,7 @@ metadata:
   labels:
     {{- include "service-tenant.labels" $ | nindent 4 }}
 spec:
-  updatePolicy: IfNotExists
+  updatePolicy: Replace
   deletionPolicy: None
   secretStoreRefs:
     - name: store
