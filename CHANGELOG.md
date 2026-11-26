@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/dan-petty/infra/compare/v0.24.0...v0.24.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **tf:** ignore the state and variable files of OpenTofu ([#172](https://github.com/dan-petty/infra/issues/172)) ([74b12b5](https://github.com/dan-petty/infra/commit/74b12b59a51e796236a26cc70eec1582a546c21c)), closes [#171](https://github.com/dan-petty/infra/issues/171)
+
 ## [0.24.0](https://github.com/dan-petty/infra/compare/v0.23.1...v0.24.0) (2026-11-26)
 
 
