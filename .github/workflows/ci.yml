@@ -101,6 +101,7 @@ jobs:
               - .github/actionlint.yaml
               - scripts/pr-title-scopes.sh
               - tests/test-pr-title-scopes.sh
+              - tests/test-ci-check-names.sh
             shell:
               - *tools
               - "**/*.sh"
@@ -156,8 +157,10 @@ jobs:
           PRIVATE_DOMAINS: ${{ secrets.PRIVATE_DOMAINS }}
         run: mise exec -- scripts/private-data-scan.sh dir .
 
-  k8s:
-    name: K8s
+  # GitHub names the check of this job "K8s run / Validate" when it runs, and "K8s run" when it is
+  # skipped, so a ruleset requires the job k8s below, not this one.
+  k8s-validate:
+    name: K8s run
     needs: changes
     if: >-
       !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
@@ -203,6 +206,32 @@ jobs:
         k8s/components/example/rules/example.rules.yaml
       kube-linter-ignorefile: helm/.kubelinterignore.yaml
       trivy-ignorefile: helm/.trivyignore.yaml
+
+  # The one check of the Kubernetes validation that a ruleset can require. It always reports, and it
+  # fails when the validation or the job changes failed or was cancelled
+  # (tests/test-ci-check-names.sh).
+  k8s:
+    name: K8s
+    needs: [changes, k8s-validate]
+    if: always()
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Report the result of the Kubernetes validation
+        timeout-minutes: 2
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CALL_RESULT: ${{ needs.k8s-validate.result }}
+        run: |
+          echo "changes: $CHANGES_RESULT, validation: $CALL_RESULT"
+          for result in "$CHANGES_RESULT" "$CALL_RESULT"; do
+            case "$result" in
+              success | skipped) ;;
+              *) exit 1 ;;
+            esac
+          done
 
   k8s-config:
     name: kube-linter config
@@ -476,6 +505,10 @@ jobs:
       - name: Test scripts/pr-title-scopes.sh
         timeout-minutes: 2
         run: mise exec -- tests/test-pr-title-scopes.sh
+
+      - name: Test the check names of ci.yml
+        timeout-minutes: 2
+        run: mise exec -- tests/test-ci-check-names.sh
 
   shell:
     name: shellcheck
