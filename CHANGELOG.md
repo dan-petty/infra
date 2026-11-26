@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/dan-petty/infra/compare/v0.23.0...v0.23.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **helm:** leave each backup key Secret to the SeaweedFS operator ([#161](https://github.com/dan-petty/infra/issues/161)) ([c571be7](https://github.com/dan-petty/infra/commit/c571be78f93daeda106337ec14e879e7fb8ac4b4))
+
 ## [0.23.0](https://github.com/dan-petty/infra/compare/v0.22.2...v0.23.0) (2026-11-25)
 
 
