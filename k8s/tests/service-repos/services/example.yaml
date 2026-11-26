@@ -20,3 +20,11 @@ extraKinds:
     kind: PrometheusRule
 secrets:
   store: true
+patches:
+  - target:
+      kind: ConfigMap
+      name: web
+    patch: |-
+      - op: replace
+        path: /data/HOST
+        value: web.example.org
