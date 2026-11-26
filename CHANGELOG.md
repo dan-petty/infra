@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/dan-petty/infra/compare/v0.23.1...v0.24.0) (2026-11-26)
+
+
+### Features
+
+* **argocd:** give a service the values of its environment with patches ([#164](https://github.com/dan-petty/infra/issues/164)) ([be9de8d](https://github.com/dan-petty/infra/commit/be9de8d6bd6c1747d3b5b53135265e909c78e63c))
+
 ## [0.23.1](https://github.com/dan-petty/infra/compare/v0.23.0...v0.23.1) (2026-11-26)
 
 
