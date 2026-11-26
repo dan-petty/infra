@@ -26,8 +26,8 @@ Each ApplicationSet has a Git files generator over `k8s/services/*.yaml`, and th
 
 - `goTemplate: true` and `goTemplateOptions: ["missingkey=error"]`. A template that reads a key that
   an entry does not have stops the render of the ApplicationSet. Thus the templates read only the
-  required keys. Only the `templatePatch` of `service-workloads` reads the optional key `images`,
-  under the guard `{{- if hasKey . "images" }}`.
+  required keys. Only the `templatePatch` of `service-workloads` reads the optional keys `images`
+  and `patches`, each under a `hasKey` guard.
 - `pathParamPrefix: file`. With `goTemplate`, the Git files generator of Argo CD v3.6.2 writes the
   path of the entry file into the param `path`, over the key `path` of the entry
   (`applicationset/generators/repo_path_utils.go`). With the prefix, the template reads the path
@@ -66,6 +66,7 @@ stops the sync of `tenant-<name>`.
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. `image` names the tag that Image Updater follows, such as `registry.example.com/example/web:main`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. The chart adds them to the AppProject of the service. |
 | `secrets` | No | `store: true` gives the service its secret store ("Secrets"). Default `store: false`. |
+| `patches` | No | Kustomize patches of the service Application, each with `target` (`kind` and `name`) and `patch` ("Environment values"). |
 
 ```yaml
 name: example
@@ -105,6 +106,29 @@ The ignore of `/spec/source/kustomize/images` keeps only the field of a Kustomiz
 service with images has a Kustomize folder at `path`. Two ImageUpdater objects that select one
 Application write over each other. Thus no other ImageUpdater object selects the label
 `app.kubernetes.io/part-of: service-repos` or the name of an entry.
+
+## Environment values
+
+A service repository holds no value of one environment, such as a real host name. It holds a
+placeholder, and the services entry in the environment repository replaces it with `patches`. The
+`templatePatch` of `service-workloads` writes them into `spec.source.kustomize.patches` of the
+Application as they are, so `path` of the entry is a Kustomize folder. Argo CD applies them after the
+folders below `path`, and before the `replacements` of the folder `path`. Thus a service declares its
+host in one ConfigMap, copies it with `replacements` in that folder, and the entry patches only the
+ConfigMap:
+
+```yaml
+patches:
+  - target:
+      kind: ConfigMap
+      name: web-host
+    patch: |-
+      - op: replace
+        path: /data/HOST
+        value: web.example.org
+```
+
+A patch can change only what the AppProject of the service admits.
 
 ## Consumer patches
 

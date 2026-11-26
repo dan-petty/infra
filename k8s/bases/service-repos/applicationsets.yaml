@@ -5,7 +5,8 @@
 #
 # Each set has these settings:
 # - goTemplateOptions missingkey=error: a template that reads a key that an entry does not have
-#   stops the render. Thus only the templatePatch reads the optional key images, under hasKey.
+#   stops the render. Thus only the templatePatch reads the optional keys images and patches, each
+#   under hasKey.
 # - pathParamPrefix file: with goTemplate, the Git files generator of Argo CD v3.6.2 writes the path
 #   of the entry file into the param path, over the key path of the entry
 #   (applicationset/generators/repo_path_utils.go). With the prefix, the path of the file is in
@@ -135,6 +136,9 @@ spec:
   # Image Updater reads the update settings only from these annotations: the required image-list
   # (alias=image, separated by commas), the update strategy digest of each alias, and the write-back
   # method argocd. The strategy digest follows the tag that the image names.
+  #
+  # The patches of an entry are the Kustomize patches of the Application. They give the service the
+  # values of this environment, such as a real host name, which its repository does not hold.
   templatePatch: |
     {{- if hasKey . "images" }}
     {{- if .images }}
@@ -149,5 +153,13 @@ spec:
         {{- range .images }}
         argocd-image-updater.argoproj.io/{{ .alias }}.update-strategy: digest
         {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if hasKey . "patches" }}
+    {{- if .patches }}
+    spec:
+      source:
+        kustomize:
+          patches: {{ toJson .patches }}
     {{- end }}
     {{- end }}

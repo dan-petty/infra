@@ -100,6 +100,7 @@ Keys of the services entry:
 | `namespaces` | Yes | The namespaces of the service, each with `name`, `podSecurity` (`restricted` or `baseline`, default `restricted`) and optional `backup.quotaGiB`. |
 | `images` | No | The images that Argo CD Image Updater updates, each with `alias` and `image`. |
 | `extraKinds` | No | Namespaced kinds, each with `group` and `kind`, that an admin reviewed. No glob. |
+| `patches` | No | Kustomize patches of the service Application (docs/service-repos.md, "Environment values"). The chart does not use them. |
 | `secrets.store` | No | `true` gives the service its secret store ("Secrets"). Default `false`. |
 
 The chart does not read `path`, `targetRevision` and `images`. The schema checks them for the

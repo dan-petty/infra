@@ -121,6 +121,30 @@
         }
       }
     },
+    "patches": {
+      "description": "Kustomize patches that Argo CD applies to the manifests of the service, such as the real host name of this environment. The chart does not use them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "patch"],
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "name"],
+            "properties": {
+              "group": { "type": "string" },
+              "version": { "type": "string" },
+              "kind": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "namespace": { "type": "string" }
+            }
+          },
+          "patch": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "extraKinds": {
       "description": "Namespaced kinds that an admin reviewed and adds to the AppProject. The chart refuses the Secret, RBAC and SecretStore kinds and each ESO generator but Password.",
       "type": "array",

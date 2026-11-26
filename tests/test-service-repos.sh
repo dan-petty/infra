@@ -245,6 +245,14 @@ for entry in "$overlay"/services/*.yaml; do
     expect "$file: $name has no annotation" "$workload" '.metadata.annotations' 'null'
   fi
 
+  # The patches of the entry are the Kustomize patches of the service Application, as written.
+  if [ "$(yq '.patches // [] | length' "$entry")" -gt 0 ]; then
+    expect "$file: $name has the patches of the entry" "$workload" '.spec.source.kustomize' \
+      "$(yq '{"patches": .patches} | to_json(0)' "$entry")"
+  else
+    expect "$file: $name has no Kustomize field" "$workload" '.spec.source.kustomize' 'null'
+  fi
+
   # The chart renders with the value files of the tenant Application, from the test copy of the
   # environment repository: the platform values in tenant-values.yaml, then the entry file.
   values=()
@@ -288,6 +296,23 @@ yq '.images = []' "$overlay/services/minimal.yaml" >"$work/no-images.yaml"
 generate service-workloads "$work/no-images.yaml" "$work/no-images-application.yaml"
 expect "an entry with an empty list of images gives no annotation" "$work/no-images-application.yaml" \
   '.metadata.annotations' 'null'
+
+yq '.patches = []' "$overlay/services/minimal.yaml" >"$work/no-patches.yaml"
+generate service-workloads "$work/no-patches.yaml" "$work/no-patches-application.yaml"
+expect "an entry with an empty list of patches gives no Kustomize field" "$work/no-patches-application.yaml" \
+  '.spec.source.kustomize' 'null'
+# A patch names the object that it changes, in the entry itself: no patch file of the service
+# repository, and no patch of every object of a kind.
+for bad in '[{"patch": "x"}]' '[{"path": "patch.yaml", "target": {"kind": "ConfigMap", "name": "web"}}]' \
+  '[{"patch": "x", "target": {"kind": "ConfigMap"}}]'; do
+  BAD="$bad" yq '.patches = (strenv(BAD) | from_json)' "$overlay/services/minimal.yaml" >"$work/bad.yaml"
+  if helm template bad "$root/charts/service-tenant" --values "$overlay/tenant-values.yaml" \
+    --values "$work/bad.yaml" >/dev/null 2>&1; then
+    fail "the chart refuses the patches $bad"
+  else
+    pass "the chart refuses the patches $bad"
+  fi
+done
 
 if RENDERED="$work/applications" "$root/scripts/k8s-validate.sh" kubeconform; then
   pass "kubeconform accepts each generated Application"
