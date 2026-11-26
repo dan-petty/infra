@@ -43,10 +43,16 @@ env:
   MISE_USE_VERSIONS_HOST_TRACK: "false"
 
 jobs:
+<<<<<<< before updating
   semantic-title:
     name: Semantic PR title
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+=======
+  pr-title:
+    name: PR title
+    uses: dan-petty/infra/.github/workflows/pr-title.yml@v0.24.2
+>>>>>>> after updating
     permissions:
       contents: read # Check out the labels file of the repository.
       pull-requests: read # Read the title and the commits of the pull request.
