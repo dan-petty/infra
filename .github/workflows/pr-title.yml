@@ -10,10 +10,12 @@ name: PR Title
 # summary has at most 60 characters. The action compares subjectPattern with the summary only.
 #
 # The scope is optional. A scope is the name after "scope/" of a scope/* label of the
-# .github/labels.yml of the caller, or `main`, the scope of the release pull request of
-# release-please. The job reads the labels file of the commit of the run, so a pull request that adds
-# a scope label can use that scope in its title. Another repository calls the workflow at a release
-# tag of infra, which Renovate updates (README.md, "Call the reusable workflows"):
+# .github/labels.yml of the caller, or a scope of every repository, which needs no label: ci, deps
+# and docs of the repository template and the updates of Renovate, main of the release pull request
+# of release-please, and spec of the plan pull request of devops-cli. The job reads the labels file
+# of the commit of the run, so a pull request that adds a scope label can use that scope in its
+# title. Another repository calls the workflow at a release tag of infra, which Renovate updates
+# (README.md, "Call the reusable workflows"):
 #
 #   on:
 #     pull_request:

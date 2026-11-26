@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests of scripts/pr-title-scopes.sh, which gives the reusable workflow .github/workflows/pr-title.yml
-# the scopes of the labels file of the caller: the name after "scope/" of each scope/* label, and
-# `main`, each one time. Run it with `mise exec -- tests/test-pr-title-scopes.sh`.
+# the scopes of the caller: the name after "scope/" of each scope/* label of its labels file, and ci,
+# deps, docs, main and spec of every repository, each one time. Run it with
+# `mise exec -- tests/test-pr-title-scopes.sh`.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,7 +38,10 @@ expect() {
   fi
 }
 
-expect scope-labels 0 $'k8s\ntf\nmain' '
+# The scopes of every repository: those that the repository template and the shared automation write.
+common=$'ci\ndeps\ndocs\nmain\nspec'
+
+expect scope-labels 0 $'k8s\ntf\n'"$common" '
 - name: "type/feature"
   color: "0E8A16"
 - name: "scope/k8s"
@@ -46,20 +50,25 @@ expect scope-labels 0 $'k8s\ntf\nmain' '
   color: "D93F0B"
 - name: "scope/tf"
   color: "7B42BC"'
-expect no-scope-label 0 main '
+expect no-scope-label 0 "$common" '
 - name: "type/bug"
   color: "D73A4A"'
-expect scope-main-label 0 $'main\nci' '
+expect empty-list 0 "$common" '[]'
+expect common-scope-labels 0 $'spec\nmain\nk8s\nci\ndeps\ndocs' '
+- name: "scope/spec"
+  color: "CFD3D7"
 - name: "scope/main"
   color: "CFD3D7"
+- name: "scope/k8s"
+  color: "326CE5"
 - name: "scope/ci"
   color: "1D76DB"'
-expect scope-prefix-only 0 main '
+expect scope-prefix-only 0 "$common" '
 - name: "noscope/k8s"
   color: "326CE5"
 - name: "type/scope/k8s"
   color: "326CE5"'
-expect label-without-name 0 $'a\nmain' '
+expect label-without-name 0 $'a\n'"$common" '
 - color: "326CE5"
 - name: 3
 - name: "scope/a"'
