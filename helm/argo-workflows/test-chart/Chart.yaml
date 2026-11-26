@@ -4,5 +4,5 @@ description: Test chart that pins argo-workflows
 version: 0.1.0
 dependencies:
   - name: argo-workflows
-    version: 2.0.18
+    version: 2.0.19
     repository: oci://ghcr.io/argoproj/argo-helm
