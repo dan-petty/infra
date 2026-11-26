@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/dan-petty/infra/compare/v0.24.1...v0.24.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ci:** report the required check K8s on every pull request ([#180](https://github.com/dan-petty/infra/issues/180)) ([47e766f](https://github.com/dan-petty/infra/commit/47e766f63ca43135762ba84a35a823dcfb32847f))
+
 ## [0.24.1](https://github.com/dan-petty/infra/compare/v0.24.0...v0.24.1) (2026-11-26)
 
 
