@@ -7,6 +7,12 @@ dan_petty-infra-*.tar.gz
 # The providers and modules of tofu init. The lock file .terraform.lock.hcl of each example stays in
 # git: it pins each provider at one version with its checksums, and Renovate updates it.
 .terraform/
+# The state and the variable values of a local tofu run. They can hold secrets and account
+# identifiers. Each *.tfvars.example file stays in git.
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
 # The upstream charts of helm dependency build. Chart.lock stays in git.
 charts/*/charts/
 helm/*/charts/
