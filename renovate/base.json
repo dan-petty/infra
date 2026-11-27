@@ -167,6 +167,17 @@
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["uses-with"],
       "pinDigests": false
+    },
+    {
+      "description": "Each manager names infra in its own form: dan-petty/infra (a workflow), github.com/dan-petty/infra, https://github.com/dan-petty/infra or https://github.com/dan-petty/infra.git (a remote, a source, the copier template). The title takes the name, so each form gets the one name dan-petty/infra and the title stays within 60 characters. The rule changes only the title: the lookups still read the name of the manager.",
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
+      "commitMessageTopic": "dan-petty/infra"
+    },
+    {
+      "description": "The copier update of the repository template gets its own title, so that it differs from the update of the other pins of infra of the same release.",
+      "matchManagers": ["copier"],
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
+      "commitMessageTopic": "dan-petty/infra template"
     }
   ]
 }
