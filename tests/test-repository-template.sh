@@ -18,6 +18,7 @@
 #     the tag of infra (infra_ref, else _commit) in a comment, and no bare tag,
 #   - a render of a lightweight release tag: each caller pins the commit of the tag, and a
 #     `copier update` to the next tag gives no conflict when Renovate already moved the callers,
+#   - that a render of a template folder with no git fails with a message, and writes no `@None`,
 #   - that infra holds each workflow that a caller calls as a reusable workflow, with each secret
 #     that the release caller passes,
 #   - that Copier refuses a scope that is not a lowercase name.
@@ -232,6 +233,23 @@ expect "update: _commit" "v1.1.0" "$(yq -r '._commit' "$work/tag/.copier-answers
 expect "update: each caller pins the commit of the next tag" \
   "uses: dan-petty/infra/.github/workflows/pr-title.yml@$next # v1.1.0
 uses: dan-petty/infra/.github/workflows/release.yml@$next # v1.1.0" "$(pins "$work/tag")"
+
+# A template folder that is not a git repository gives Copier no commit (_copier_conf.vcs_ref_hash
+# is None). The render fails with a message, and writes no caller with `@None`.
+mkdir "$work/plain"
+cp -R "$root/copier.yml" "$root/templates" "$work/plain/"
+cases=$((cases + 1))
+if copier copy --quiet --defaults "$work/plain" "$work/plain-render" >"$work/plain.log" 2>&1; then
+  echo "FAIL copier refuses a template with no commit"
+  pins "$work/plain-render" | sed 's/^/     /'
+  failures=$((failures + 1))
+elif ! grep -q 'Copier gives no commit of the template' "$work/plain.log"; then
+  echo "FAIL copier refuses a template with no commit: the message is missing"
+  tail -n 3 "$work/plain.log" | sed 's/^/     /'
+  failures=$((failures + 1))
+else
+  echo "ok   copier refuses a template with no commit"
+fi
 
 # The release flow with each release type, and two scopes of the repository. A scope of the
 # template, here docs, comes once.

@@ -83,11 +83,19 @@ callers of the reusable workflows also get the commit of the new tag, with the n
 comment.
 
 The github-actions manager of Renovate also reads each caller, as a digest pin with the version in
-its comment, and proposes the same new tag in its own pull request. It writes
-`@<sha> # vX.Y.Z`, the same text that Copier renders, because the tags of infra are lightweight:
-the commit of a tag is its digest. So the pull request that merges second makes no conflict: Git
-merges the same change on two sides, and the 3-way merge of `copier update` keeps a caller that
-Renovate already moved to the new tag. The test of the template proves this ("Test").
+its comment, and proposes the same new tag in its own pull request. It writes `@<sha> # vX.Y.Z`,
+where `<sha>` is the commit of the tag, also for an annotated tag: the same text that Copier
+renders. So the pull request that merges second makes no conflict: Git merges the same change on
+two sides, and the 3-way merge of `copier update` keeps a caller that Renovate already moved to the
+new tag. The test of the template proves this ("Test").
+
+A repository that also extends `renovate/k8s` does not get this update today. The group `infra` of
+`renovate/k8s.json` also holds the copier dependency, so Renovate puts the copier update into the
+branch of the other pins of infra. The other managers change files in that branch first, and
+`copier update` stops with "Destination repository is dirty". The pull request then changes only
+the pins, and `_commit` stays at its old tag. dan-petty/homelab and dan-petty/danielpetty.com are
+such repositories: their `_commit` is `v0.24.1`. #216 takes the copier dependency out of the group,
+and runs the catch-up `copier update --vcs-ref <release>` in the two repositories.
 
 A change that a rendered repository cannot take with `copier update` and its answers is a breaking
 change: for example, a question with no default, or a question with a new name. Write it with `!`
@@ -116,6 +124,8 @@ checks the rendered files:
   `git rev-parse <tag>^{commit}`. Then the test moves the callers to the next tag as Renovate does,
   and `copier update --skip-answered --defaults` to that tag gives no conflict and leaves the
   callers as they are,
+- that a render of a template folder with no git fails with the message "Copier gives no commit of
+  the template", so no caller gets `@None`,
 - that infra holds each workflow that a caller calls as a reusable workflow (`on: workflow_call`),
   with each secret that the release caller passes. A release tag of infra then holds each workflow
   that the repositories rendered at that tag call,

@@ -53,8 +53,8 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 caller of a reusable workflow pins `<sha>`, the commit of the tag (`git rev-parse vX.Y.Z^{commit}`),
 with the tag in a comment: the github-actions manager of Renovate writes this form for a digest pin
 (`pinDigests` of [renovate/base.json](renovate/base.json)), and a repository with a supply-chain
-rule refuses a bare tag. The tags of infra are lightweight, so the commit of the tag is the digest
-that Renovate reads.
+rule refuses a bare tag. The commit of the tag is the digest that Renovate reads, also for an
+annotated tag.
 
 | Form | Pin |
 | --- | --- |
