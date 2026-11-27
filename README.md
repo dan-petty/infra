@@ -124,6 +124,16 @@ of its tag. infra calls each workflow of its own commit, so its CI tests them: `
 each action has a pin to a commit SHA, no job gets more permissions than it needs and no call passes
 `secrets: inherit`. `.github/zizmor.yml` holds its settings.
 
+`k8s-validate.yml` and `pr-title.yml` take the input `runs-on`, the runner label of the called job.
+Empty, the default, selects the GitHub-hosted runner `ubuntu-26.04`. A `workflow_call` input is a
+boolean, a number or a string, so the input names one label, such as the name of a runner scale set.
+A caller with the runner name in the variable `RUNNER` passes `runs-on: ${{ vars.RUNNER }}`: when
+the variable is not set, the value is empty
+([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#vars-context)).
+The called job can use a self-hosted runner of the caller only when the caller and infra have the
+same owner
+([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#how-reusable-workflows-use-runners)).
+
 `pr-title.yml` and `release.yml` set the concurrency of their job, with a group that starts with
 `infra-`. A caller needs no concurrency group. When it sets one, the group must not start with
 `infra-`: the same group in a caller and a called workflow can cancel the caller
@@ -166,6 +176,7 @@ jobs:
 | `kube-linter-config` | The kube-linter config file of the caller. Empty selects the shared `.kube-linter.yaml` of infra. |
 | `promtool-rules` | The Prometheus rule files to check, one on each line. |
 | `trivy-ignorefile` | The trivy ignore file of the caller, in the form of `tf/.trivyignore.yaml`, which `trivy config` gets with `--ignorefile`. Empty gives no ignore file. |
+| `runs-on` | The runner label of the job. Empty selects `ubuntu-26.04` ("Call the reusable workflows"). |
 
 Each path is relative to the root of the caller repository. The shared `.kube-linter.yaml` holds
 the default checks of kube-linter, five more checks and two custom checks. `pvc-prune-protection`:
@@ -210,8 +221,12 @@ jobs:
       pull-requests: read
 ```
 
-The type `edited` runs the check again after a change of the title. The workflow has no inputs.
-The check of the caller above has the name `PR title / Semantic PR title`.
+The type `edited` runs the check again after a change of the title. The check of the caller above
+has the name `PR title / Semantic PR title`.
+
+| Input | Content |
+| --- | --- |
+| `runs-on` | The runner label of the job. Empty selects `ubuntu-26.04` ("Call the reusable workflows"). |
 
 ### `release.yml`
 
