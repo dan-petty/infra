@@ -20,6 +20,9 @@
 - name: Configure GRUB for unattended headless boots
   ansible.builtin.include_tasks: grub.yml
 
+- name: Set the systemd default target
+  ansible.builtin.include_tasks: default_target.yml
+
 - name: Update APT package cache
   ansible.builtin.apt:
     update_cache: true
