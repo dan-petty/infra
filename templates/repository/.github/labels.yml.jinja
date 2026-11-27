@@ -2,7 +2,8 @@
 # GitHub. The workflow labels, such as type/* and status/*, come from devops-cli. Intake gives an
 # issue the scope/* label of its Conventional Commit scope, and the PR title check accepts each
 # scope of this file. In every repository it also accepts ci, deps, docs, main and spec, with or
-# without a label. Each scope/* label is gray (DCDCD6), as in devops-cli.
+# without a label. Each scope/* label is gray (DCDCD6), as in devops-cli. The template writes this
+# file from the answer scopes: add a scope with `copier update --data scopes=<scopes>`, not here.
 {%- set template_scopes = ['ci', 'deps', 'docs'] %}
 {%- set own_scopes = scopes.split(',') | map('trim') | reject('equalto', '')
   | reject('in', template_scopes) | unique | list %}

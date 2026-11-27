@@ -2,11 +2,12 @@
 # Tests of the Renovate presets of renovate/ and of the Renovate config .github/renovate.json.
 # - The config validator of Renovate checks each file in strict mode.
 # - The fixture tests/renovate/ is a consumer repository: it holds one pin of infra in each consumer
-#   form (README.md, "Pin a release") and a CloudNativePG Cluster. A consumer extends
-#   github>dan-petty/infra//renovate/base and github>dan-petty/infra//renovate/k8s. The local
-#   platform of Renovate does not resolve a preset of a repository, so the test merges the two
-#   presets into one config, as Renovate merges the presets of extends: the packageRules and the
-#   customManagers of k8s.json come after those of base.json, and k8s.json sets each other key.
+#   form (README.md, "Pin a release"), a caller of infra that the repository template renders, and a
+#   CloudNativePG Cluster. A consumer extends github>dan-petty/infra//renovate/base and
+#   github>dan-petty/infra//renovate/k8s. The local platform of Renovate does not resolve a preset of
+#   a repository, so the test merges the two presets into one config, as Renovate merges the presets
+#   of extends: the packageRules and the customManagers of k8s.json come after those of base.json,
+#   and k8s.json sets each other key.
 # - Renovate extracts the dependencies of a copy of the fixture with that config
 #   (`--platform=local --dry-run=extract` reads the files of the working tree, looks up no release
 #   and opens no pull request). The test checks that Renovate reads each pin of infra, at a release
@@ -16,9 +17,10 @@
 # - Renovate looks up the releases of each pin of infra (`--dry-run=lookup`). The extract does not
 #   apply the packageRules, so only the lookup proves a rule that changes the name that a lookup
 #   reads. The test checks that each lookup gets the repository https://github.com/dan-petty/infra
-#   with no warning. The datasource github-tags reads the GitHub API, which needs a token: set
-#   RENOVATE_GITHUB_COM_TOKEN to a token that can read public repositories. Without a token, the
-#   test skips the lookup; in CI (CI=true) the lookup is necessary.
+#   with no warning, that Renovate leaves the caller that the template renders to the copier update,
+#   and that the copier update gets one update. The datasource github-tags reads the GitHub API,
+#   which needs a token: set RENOVATE_GITHUB_COM_TOKEN to a token that can read public repositories.
+#   Without a token, the test skips the lookup; in CI (CI=true) the lookup is necessary.
 # Run it with `mise exec -- tests/test-renovate-presets.sh`. npx installs the Renovate release of
 # RENOVATE_VERSION with the Node of mise.toml, and runs no install script of a package.
 set -euo pipefail
@@ -128,6 +130,39 @@ else
   failures=$((failures + 1))
 fi
 
+# The repository template renders each caller of infra of templates/repository/.github/workflows/,
+# and the copier update moves its pin with the other files of the template (#225). So a rule of
+# base.json turns off the github-actions manager for the pin of infra in each of these files: each
+# pin has one owner. Two owners make the copier update conflict.
+callers="$(cd "$root/templates/repository" && find .github/workflows -name '*.yml.jinja' |
+  sed 's/\.jinja$//' | jq -R . | jq -s -c .)"
+cases=$((cases + 1))
+if jq -e --argjson callers "$callers" '
+  ($callers | length) > 0
+  and any(.packageRules[]; .enabled == false
+    and ((.matchManagers // []) | index("github-actions") != null)
+    and ((.matchPackageNames // []) | index("dan-petty/infra") != null)
+    and ($callers - (.matchFileNames // []) == []))
+' "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: Renovate leaves each caller of the template to the copier update"
+else
+  echo "FAIL renovate/base.json: Renovate moves a caller of the template: $callers"
+  failures=$((failures + 1))
+fi
+
+# The copier update has one branch for each repository, with no split into major, minor and patch,
+# so it always renders the newest release of the template (#225). Two copier branches change the
+# same files and conflict.
+cases=$((cases + 1))
+if jq -e 'any(.packageRules[]; (.matchManagers // []) == ["copier"]
+  and .separateMajorMinor == false and .separateMinorPatch == false)' \
+  "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: the copier update has one branch"
+else
+  echo "FAIL renovate/base.json: the copier update has a branch for each update type"
+  failures=$((failures + 1))
+fi
+
 mkdir "$work/repo"
 cp -R "$root/tests/renovate/." "$work/repo/"
 if ! jq -n --slurpfile base "$root/renovate/base.json" --slurpfile k8s "$root/renovate/k8s.json" '
@@ -189,19 +224,27 @@ expect() {
   check "$1: the pin of infra" ".manager == \"$1\" and ($infra)" "$pin"
 }
 
+# The fixture holds two callers of infra: k8s.yml, a caller of the repository, and pr-title.yml, a
+# caller that the repository template renders.
+k8s_caller='.manager == "github-actions" and .file == ".github/workflows/k8s.yml"'
+template_caller='.manager == "github-actions" and .file == ".github/workflows/pr-title.yml"'
+
 expect kustomize
 expect terraform
 expect ansible-galaxy
 expect argocd
-expect github-actions
+expect copier
+check "github-actions: the pin of infra" "$k8s_caller and ($infra)" "$pin"
 
 # The github-actions manager reads a caller of a reusable workflow of infra as a digest pin: the
-# commit of the tag v0.1.0, with the tag in its comment. An update writes the same form, which is
-# the text that the repository template renders, so Renovate and `copier update` write one line.
-check "github-actions: the digest pin of the reusable workflow" \
-  ".manager == \"github-actions\" and ($infra)" \
-  '.depType == "workflow" and .currentValue == "v0.1.0"
-  and .currentDigest == "aacb6e4661513b20885ebd56f1f2edb89534d5cd"'
+# commit of the tag v0.1.0, with the tag in its comment, the text that the repository template
+# renders.
+for workflow in k8s pr-title; do
+  check "github-actions: the digest pin of the reusable workflow in $workflow.yml" \
+    ".manager == \"github-actions\" and .file == \".github/workflows/$workflow.yml\" and ($infra)" \
+    '.depType == "workflow" and .currentValue == "v0.1.0"
+    and .currentDigest == "aacb6e4661513b20885ebd56f1f2edb89534d5cd"'
+done
 
 # The CloudNativePG custom manager reads the image of spec.imageName of the Cluster, and not the
 # deeper imageName field of the Helm values.
@@ -238,13 +281,22 @@ else
   grep '^{' "$work/lookup.log" | jq -c '
     select(.msg == "packageFiles with updates") | .config | to_entries[] | .key as $manager
     | .value[] | .packageFile as $file | .deps[]
-    | {manager: $manager, file: $file, depName, packageName, datasource, sourceUrl, warnings}' \
+    | {manager: $manager, file: $file, depName, packageName, datasource, sourceUrl, warnings,
+       skipReason, updates: [.updates[]? | {updateType, newValue, bucket, branchName}]}' \
     >"$work/lookup.jsonl"
-  for manager in kustomize terraform ansible-galaxy argocd github-actions; do
-    check "$manager: the lookup of the pin of infra" ".manager == \"$manager\" and ($infra)" \
+  for filter in '.manager == "kustomize"' '.manager == "terraform"' '.manager == "ansible-galaxy"' \
+    '.manager == "argocd"' '.manager == "copier"' "$k8s_caller"; do
+    check "$filter: the lookup of the pin of infra" "$filter and ($infra)" \
       '.sourceUrl == "https://github.com/dan-petty/infra" and (.warnings // []) == []' \
       "$work/lookup.jsonl"
   done
+  # Renovate leaves the pin of the caller that the template renders to the copier update, and the
+  # copier update from v0.24.1 gets one update, to the newest release: v0.24.1 has a newer patch
+  # and a newer minor release.
+  check "github-actions: Renovate leaves the caller of the template to the copier update" \
+    "$template_caller and ($infra)" '.skipReason == "disabled"' "$work/lookup.jsonl"
+  check "copier: one update to the newest release" '.manager == "copier"' \
+    '(.updates | length) == 1' "$work/lookup.jsonl"
 fi
 
 echo "$((cases - failures)) of $cases cases passed"

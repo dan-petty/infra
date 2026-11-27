@@ -9,8 +9,8 @@ name: Release
 # The caller must pass the secret by name, and the job gets the value of the secret of the
 # environment. The caller passes no other secret: no `secrets: inherit`.
 # The caller pins the commit of the release tag of infra that rendered this file, with the tag in a
-# comment: the form of a digest pin of the github-actions manager of Renovate. `copier update`
-# changes both.
+# comment: the form of a digest pin of the github-actions manager of Renovate. Only `copier update`
+# changes both: Renovate leaves this pin to the template.
 on:
   push:
     branches:
