@@ -75,6 +75,24 @@ code_owner:
     The code owner is a GitHub user or team, such as @dan-petty.
     {% endif %}
 
+scope_descriptions:
+  type: yaml
+  help: >-
+    The description of a scope/* label, by scope, such as {api: "The HTTP API in api/"}. A scope of
+    the repository with no description gets "The area <scope> of this repository", and ci, deps and
+    docs get the description of the template. GitHub allows 100 characters.
+  default: {}
+  validator: >-
+    {% set known = ['ci', 'deps', 'docs'] + (scopes.split(',') | map('trim') | list) -%}
+    {% if scope_descriptions is not mapping -%}
+    The scope descriptions are a mapping of a scope to its description, such as {api: "The API"}.
+    {% else %}{% for scope, text in scope_descriptions.items() -%}
+    {% if scope not in known -%}
+    The scope "{{ scope }}" has a description, but it is not ci, deps, docs or a scope of scopes.
+    {% elif text is not string or not text or text | length > 100 or '"' in text or '\\' in text -%}
+    The description of the scope "{{ scope }}" is not a text of 1 to 100 characters with no " or \.
+    {% endif %}{% endfor %}{% endif %}
+
 required_checks:
   type: str
   help: >-

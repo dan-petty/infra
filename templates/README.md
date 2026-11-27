@@ -27,6 +27,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `release_type` | `simple` | The release type of release-please: `simple`, `python` or `node`. Only `simple` gets `version.txt`. A `python` or `node` repository holds its version in its `pyproject.toml` or `package.json`. Copier asks it only when `release_flow` is `true`. |
 | `scopes` | empty | The Conventional Commit scopes of the repository, separated by commas. Each scope gets a label `scope/<scope>`. The template always adds `ci`, `deps` and `docs`. Copier refuses a scope that is not a lowercase name, and the scope `main` of the release pull request. |
 | `code_owner` | `@dan-petty` | The code owner of each file in `.github/CODEOWNERS`. |
+| `scope_descriptions` | `{}` | The description of a `scope/<scope>` label, by scope, as a YAML mapping, such as `{api: "The HTTP API in api/"}`. A scope with no description gets "The area `<scope>` of this repository", and `ci`, `deps` and `docs` get the description of the template. Copier refuses a scope that is not `ci`, `deps`, `docs` or a scope of `scopes`, and a description that is not a text of 1 to 100 characters with no `"` or `\`. |
 | `required_checks` | empty | The checks of the workflows of the repository that each pull request into `main` must pass, separated by commas, such as `K8s,Lint`. The ruleset `main` of `github/repository.yaml` requires each of them and the title check `PR title / Semantic PR title` of `.github/workflows/pr-title.yml`, from GitHub Actions (integration `15368`). Copier refuses a name with a character other than a letter, a digit, a space or `._/()-`. |
 | `code_coverage` | `false` | Gate pull requests with a `code_coverage` rule in the ruleset `main` of `github/repository.yaml`, with `minimum_coverage: 80`. The default is `false`. Answer `true` for a repository that reports coverage. |
 | `infra_ref` | the tag that Copier renders | Copier does not ask it and does not write it into `.copier-answers.yml`. The default is `_commit`, the tag in the comment of each caller of a reusable workflow. The caller pins `_copier_conf.vcs_ref_hash`, the commit of that tag ("Files"). |
@@ -37,7 +38,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | --- | --- |
 | `.copier-answers.yml` | The answers, the tag `_commit` and the source `_src_path`. `copier update` and Renovate read it. |
 | `.github/renovate.json` | Extends `github>dan-petty/infra//renovate/base` ([renovate/README.md](../renovate/README.md)). The repository owns it after the first copy ("Owners"). |
-| `.github/labels.yml` | The labels of the repository only: one `scope/<scope>` label for each scope, and with the release flow the two `autorelease:` labels of release-please. The workflow labels come from devops-cli. |
+| `.github/labels.yml` | The labels of the repository only: one gray `scope/<scope>` label for each scope, with its description of `scope_descriptions`, and with the release flow the two `autorelease:` labels of release-please. The workflow labels come from devops-cli. |
 | `.github/CODEOWNERS` | `* <code_owner>`: GitHub asks the code owner to review each pull request. |
 | `.github/workflows/pr-title.yml` | Calls the reusable workflow `dan-petty/infra/.github/workflows/pr-title.yml@<sha> # <infra_ref>`, which checks the pull request title. `<sha>` is the commit that Copier renders (`_copier_conf.vcs_ref_hash`), the commit of the tag `<infra_ref>`. |
 | `.github/workflows/release.yml` | With the release flow: calls the reusable workflow `dan-petty/infra/.github/workflows/release.yml@<sha> # <infra_ref>` on each push to `main`. It gives the job token no permission and passes the secret `RELEASE_APP_PRIVATE_KEY` by name, with no `secrets: inherit`. The job of the reusable workflow runs in the environment `release`, which holds the credentials of the release App, and gets the value of the secret of the environment. |
@@ -57,7 +58,8 @@ Each file has one owner (#225), so `copier update` has no second change to merge
 - The template owns each file of the table above, except the files of the next item. `copier
   update` and `copier recopy` write it again from the answers of `.copier-answers.yml`. Change such
   a file in the template, or change an answer with `copier update --data <question>=<answer>`:
-  a scope in `scopes`, a required check in `required_checks`. Renovate leaves the pins of the
+  a scope in `scopes`, its label description in `scope_descriptions`, a required check in
+  `required_checks`. Renovate leaves the pins of the
   callers `.github/workflows/pr-title.yml` and `.github/workflows/release.yml` to the copier update
   (a package rule of [renovate/base.json](../renovate/base.json)).
 - The repository owns the files of `_skip_if_exists` of `copier.yml` after the first copy:
@@ -70,9 +72,11 @@ A repository with changed template files re-adopts the template once, with the a
 its content:
 
 ```sh
-copier recopy --skip-answered --defaults --overwrite --vcs-ref vX.Y.Z \
-  --data scopes=<scopes> --data required_checks=<checks> .
+copier recopy --skip-answered --defaults --overwrite --vcs-ref vX.Y.Z --data-file answers.yml .
 ```
+
+`answers.yml` holds `scopes`, `scope_descriptions` and `required_checks` with the values of the
+labels and the required checks of the repository.
 
 `copier recopy` renders the tag over the repository with no 3-way merge, so the result has no
 conflict. It keeps each file of `_skip_if_exists`. Then Renovate gives each new release with
@@ -140,9 +144,9 @@ checks the rendered files:
   release-please files with the schemas of the release-please release of the test,
 - the config validator of Renovate, in strict mode, on `.github/renovate.json`,
 - the answers in the files: the scope labels, the release type, the environment `release`, the
-  secret that the release caller passes by name, the code owner, and the required checks: each
-  check of `required_checks` and the title check, which is the name of the job of the caller and
-  the name of the job of `pr-title.yml` of infra,
+  secret that the release caller passes by name, the code owner, the description of each scope
+  label, and the required checks: each check of `required_checks` and the title check, which is
+  the name of the job of the caller and the name of the job of `pr-title.yml` of infra,
 - each caller of a reusable workflow of infra: a commit SHA of 40 characters, with the tag of infra
   (`infra_ref`, else `_commit`) in a comment, and no bare tag,
 - a render of a lightweight tag of a git repository that holds the template: each caller pins
@@ -156,8 +160,9 @@ checks the rendered files:
 - that infra holds each workflow that a caller calls as a reusable workflow (`on: workflow_call`),
   with each secret that the release caller passes. A release tag of infra then holds each workflow
   that the repositories rendered at that tag call,
-- that Copier refuses a scope that is not a lowercase name, the scope `main`, and a check name
-  that is not plain YAML text.
+- that Copier refuses a scope that is not a lowercase name, the scope `main`, a check name that is
+  not plain YAML text, a description of an unknown scope, and a description that is not a text of
+  1 to 100 characters with no `"` or `\`.
 
 ```sh
 mise exec -- tests/test-repository-template.sh

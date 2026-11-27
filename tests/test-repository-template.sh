@@ -12,9 +12,10 @@
 #   - check-jsonschema: github/repository.yaml with templates/github-repository.schema.json, and the
 #     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
 #   - the config validator of Renovate, in strict mode, on .github/renovate.json,
-#   - the answers in the files: the scope labels, the release type, the environment release, the
-#     secret that the release caller passes by name, the code owner, and the required checks: the
-#     title check of the template and each check of the answer required_checks,
+#   - the answers in the files: the scope labels and their descriptions, the release type, the
+#     environment release, the secret that the release caller passes by name, the code owner, and
+#     the required checks: the title check of the template and each check of the answer
+#     required_checks,
 #   - the pin of each caller of a reusable workflow of infra: the commit that Copier renders, with
 #     the tag of infra (infra_ref, else _commit) in a comment, and no bare tag,
 #   - a render of a lightweight release tag: each caller pins the commit of the tag. Then the
@@ -25,7 +26,8 @@
 #   - that a render of a template folder with no git fails with a message, and writes no `@None`,
 #   - that infra holds each workflow that a caller calls as a reusable workflow, with each secret
 #     that the release caller passes,
-#   - that Copier refuses a scope that is not a lowercase name, and a check name that is not plain.
+#   - that Copier refuses a scope that is not a lowercase name, a check name that is not plain, and a
+#     scope description of an unknown scope, or that is not a plain text of 1 to 100 characters.
 # Run it from the repository root after `uv sync --frozen`: `mise exec -- tests/test-repository-template.sh`.
 # npx installs the Renovate release of RENOVATE_VERSION with the Node of mise.toml, and runs no
 # install script of a package. check-jsonschema downloads the release-please schemas from GitHub.
@@ -330,6 +332,16 @@ else
   echo "ok   copier refuses a template with no commit"
 fi
 
+# The answer scope_descriptions gives a scope label its own description, also a scope of the
+# template. Each other scope label gets the description of the template.
+render described "scopes=api,worker" \
+  'scope_descriptions={api: "The HTTP API in api/", ci: "Workflows: build, scan and publish"}'
+validate described
+expect "described: the descriptions of the scope labels" \
+  "Workflows: build, scan and publish|Dependency pins and the updates of Renovate|README and other documents|The HTTP API in api/|The area worker of this repository" \
+  "$(yq -r '[.[] | select(.name | test("^scope/")) | .description] | join("|")' \
+    "$work/described/.github/labels.yml")"
+
 # The release flow with each release type, and two scopes of the repository. A scope of the
 # template, here docs, comes once.
 for type in simple python node; do
@@ -384,8 +396,11 @@ check "release workflow requests review on the release pull request" \
   "$root/.github/workflows/release.yml"
 
 # Copier refuses a scope that is not a lowercase name, the scope main of the release pull request,
-# and a check name that is not a plain YAML text.
-for data in "scopes=Bad Scope" "scopes=api,main" "required_checks=K8s: lint"; do
+# a check name that is not a plain YAML text, a description of a scope that the repository does not
+# have, and a description that is not a text of 1 to 100 characters with no quote or backslash.
+for data in "scopes=Bad Scope" "scopes=api,main" "required_checks=K8s: lint" \
+  "scope_descriptions={api: The API}" 'scope_descriptions={docs: "The \"docs\""}' \
+  "scope_descriptions={docs: ''}" "scope_descriptions=[docs]"; do
   cases=$((cases + 1))
   if copier copy --quiet --defaults --vcs-ref HEAD --data "infra_ref=$ref" --data "$data" \
     "$root" "$work/refused" >"$work/refused.log" 2>&1; then

@@ -4,9 +4,9 @@
 
 Kind: behavior.
 
-- [x] 1.1 Add the cases to `tests/test-repository-template.sh`: a repository writes its own content into the five files, the next tag changes each template file, and `copier update` and `copier recopy --overwrite` give no conflict, keep the five files and render each other file; the required checks of the default answers and of `required_checks`; the refusal of a check name that is not plain. See them fail on `main`
+- [x] 1.1 Add the cases to `tests/test-repository-template.sh`: a repository writes its own content into the five files, the next tag changes each template file, and `copier update` and `copier recopy --overwrite` give no conflict, keep the five files and render each other file; the scope descriptions of `scope_descriptions`; the required checks of the default answers and of `required_checks`; the refusal of a check name that is not plain and of a description that the template cannot render. See them fail on `main`
   - Verification: `$ mise exec -- tests/test-repository-template.sh`
-- [x] 1.2 Add `_skip_if_exists` and the answer `required_checks` to `copier.yml`, and render the required checks in `templates/repository/github/repository.yaml.jinja`
+- [x] 1.2 Add `_skip_if_exists` and the answers `scope_descriptions` and `required_checks` to `copier.yml`, and render them in `templates/repository/.github/labels.yml.jinja` and `templates/repository/github/repository.yaml.jinja`
   - Verification: `$ mise exec -- tests/test-repository-template.sh`
 
 ## 2. The Renovate rules of the copier update
