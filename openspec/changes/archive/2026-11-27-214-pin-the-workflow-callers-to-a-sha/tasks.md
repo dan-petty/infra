@@ -6,7 +6,9 @@
   - Verification: `$ mise exec -- tests/test-repository-template.sh` (on the base, 85 of 95 cases pass)
 - [x] 1.2 Render each caller in `pr-title.yml.jinja` and `release.yml.jinja` as `@{{ _copier_conf.vcs_ref_hash }} # {{ infra_ref }}`, and delete the test case `commit` that expected a bare `_commit`
   - Verification: `$ mise exec -- tests/test-repository-template.sh`
-- [x] 1.3 Check a render of a release tag with actionlint and zizmor
+- [x] 1.3 Write the failing test: a render of a template folder with no git fails with the message "Copier gives no commit of the template", then guard each caller with the filter `mandatory`
+  - Verification: `$ mise exec -- tests/test-repository-template.sh` (before the guard, 95 of 96 cases pass)
+- [x] 1.4 Check a render of a release tag with actionlint and zizmor
   - Verification: in a clone of infra, tag the commit of this change as `v0.25.1` (lightweight), run `copier copy --defaults --vcs-ref v0.25.1 --data release_flow=true <clone> <dir>`, then `mise exec -- actionlint <dir>/.github/workflows/*.yml` and `.venv/bin/zizmor --offline <dir>/.github/workflows/`: no error and no finding. Each caller holds `git rev-parse v0.25.1^{commit}`.
 
 ## 2. Renovate fixture
@@ -28,4 +30,5 @@
 
 ## Workflow follow-up
 
+- The copier dependency out of the group `infra` of `renovate/k8s.json`, and the catch-up `copier update` in dan-petty/homelab and dan-petty/danielpetty.com: #216.
 - The new render of `.github/workflows/pr-title.yml` in the template pull request dan-petty/vibes#314, at the release that holds this change.

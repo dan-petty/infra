@@ -17,6 +17,10 @@ Each caller of a reusable workflow of infra that the repository template renders
 - **WHEN** Copier renders the template at a lightweight tag `v1.0.0` with the release flow on
 - **THEN** `mise exec -- tests/test-repository-template.sh` finds `@<sha> # v1.0.0` in `pr-title.yml` and `release.yml`, where `<sha>` is `git rev-parse v1.0.0^{commit}`
 
+#### Scenario: A template folder with no git
+- **WHEN** Copier renders a copy of `copier.yml` and `templates/` that is not a git repository
+- **THEN** `mise exec -- tests/test-repository-template.sh` finds that the render fails with the message "Copier gives no commit of the template"
+
 #### Scenario: A supply-chain check of the render
 - **WHEN** `.venv/bin/zizmor --offline` checks the workflows of a render of a release tag
 - **THEN** it reports no `unpinned-uses` finding
