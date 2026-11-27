@@ -1,0 +1,33 @@
+---
+# default_target.yml — The systemd default target and the display manager of a host. A host that
+# does not set common_default_target gets no change (README.md, "Default target").
+
+# The link is the one that `systemctl set-default` writes. With force: false, the module refuses a
+# target unit that does not exist and a regular file at the link path, as set-default does.
+- name: Link the systemd default target
+  ansible.builtin.file:
+    src: "/usr/lib/systemd/system/{{ common_default_target }}"
+    path: "{{ common_default_target_link }}"
+    state: link
+    force: false
+  register: common_default_target_result
+  when: common_default_target is defined
+
+# The display manager is the alias display-manager.service of the unit of the installed display
+# manager. A host with no display manager has no such unit, so the stop skips it.
+- name: Read the services of the host
+  ansible.builtin.service_facts:
+  when:
+    - common_default_target | default('') == 'multi-user.target'
+    - common_display_manager_stop | bool
+
+# The stop ends a local desktop session. The unit stays enabled and the desktop packages stay.
+- name: Stop the display manager
+  ansible.builtin.systemd:
+    name: display-manager.service
+    state: stopped
+  register: common_display_manager_stop_result
+  when:
+    - common_default_target | default('') == 'multi-user.target'
+    - common_display_manager_stop | bool
+    - "'display-manager.service' in ansible_facts.services | default({})"

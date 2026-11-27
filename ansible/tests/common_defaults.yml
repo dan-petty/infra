@@ -1,6 +1,7 @@
 ---
-# Test of the role common: the defaults give the k3s cluster CIDRs. The import has
-# `when: false`, so no task of the role runs, but the play still gets the defaults of the role.
+# Test of the role common: the defaults give the k3s cluster CIDRs, and they leave the systemd
+# default target and the display manager as they are. The import has `when: false`, so no task of
+# the role runs, but the play still gets the defaults of the role.
 - name: Check the defaults of the common role
   hosts: k3s_server
   gather_facts: false
@@ -15,4 +16,12 @@
         that:
           - common_k3s_pod_cidr == '10.42.0.0/16'
           - common_k3s_service_cidr == '10.43.0.0/16'
+        quiet: true
+
+    - name: Check the default target defaults
+      ansible.builtin.assert:
+        that:
+          - common_default_target is not defined
+          - common_display_manager_stop is false
+          - common_default_target_link == '/etc/systemd/system/default.target'
         quiet: true

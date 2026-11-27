@@ -1,0 +1,173 @@
+---
+# Test of the role common: the task file default_target.yml links the systemd default target of
+# common_default_target, and it stops the display manager only when common_display_manager_stop
+# asks for it. The play runs on localhost and puts the link (common_default_target_link) into a
+# temporary folder, so it needs no root and changes no file of the system. The link points at the
+# target units of the test machine, as `systemctl set-default` does. No case stops a service: the
+# one case that reaches the stop runs in check mode.
+- name: Check the default target tasks of the common role
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Read the target units of the test machine
+      ansible.builtin.stat:
+        path: "/usr/lib/systemd/system/{{ item }}"
+      loop:
+        - graphical.target
+        - multi-user.target
+      register: common_test_units
+
+    - name: Check that the test machine has the target units
+      ansible.builtin.assert:
+        that: common_test_units.results | map(attribute='stat.exists') | list == [true, true]
+        fail_msg: The test needs the systemd target units in /usr/lib/systemd/system.
+        quiet: true
+
+    - name: Make a temporary folder for the link
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: .default-target
+      register: common_test_dir
+
+    - name: Run the cases with the link in the temporary folder
+      block:
+        - name: Set the link path
+          ansible.builtin.set_fact:
+            common_default_target_link: "{{ common_test_dir.path }}/default.target"
+
+        - name: Run the tasks with no default target
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+
+        - name: Read the link after the run with no default target
+          ansible.builtin.stat:
+            path: "{{ common_default_target_link }}"
+          register: common_test_link
+
+        - name: Check that no default target writes no link and stops nothing
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is skipped
+              - common_display_manager_stop_result is skipped
+              - not common_test_link.stat.exists
+            quiet: true
+
+        - name: Run the tasks with the graphical target
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+          vars:
+            common_default_target: graphical.target
+
+        - name: Read the link after the graphical target
+          ansible.builtin.stat:
+            path: "{{ common_default_target_link }}"
+          register: common_test_link
+
+        - name: Check that the graphical target writes the link
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is changed
+              - common_test_link.stat.islnk
+              - common_test_link.stat.lnk_target == '/usr/lib/systemd/system/graphical.target'
+              - common_display_manager_stop_result is skipped
+            quiet: true
+
+        - name: Run the tasks with the graphical target again
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+          vars:
+            common_default_target: graphical.target
+
+        - name: Check that the second run changes nothing
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is not changed
+            quiet: true
+
+        - name: Run the tasks with the headless target and no stop
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+          vars:
+            common_default_target: multi-user.target
+
+        - name: Read the link after the headless target
+          ansible.builtin.stat:
+            path: "{{ common_default_target_link }}"
+          register: common_test_link
+
+        - name: Check that the headless target changes the link and stops nothing
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is changed
+              - common_test_link.stat.lnk_target == '/usr/lib/systemd/system/multi-user.target'
+              - common_display_manager_stop_result is skipped
+            quiet: true
+
+        - name: Run the tasks with the graphical target and the stop
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+          vars:
+            common_default_target: graphical.target
+            common_display_manager_stop: true
+
+        - name: Check that the graphical target stops nothing
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is changed
+              - common_display_manager_stop_result is skipped
+            quiet: true
+
+        - name: Run the tasks with the headless target and the stop in check mode
+          ansible.builtin.include_role:
+            name: dan_petty.infra.common
+            tasks_from: default_target
+            apply:
+              check_mode: true
+          vars:
+            common_default_target: multi-user.target
+            common_display_manager_stop: true
+
+        - name: Read the link after the check mode run
+          ansible.builtin.stat:
+            path: "{{ common_default_target_link }}"
+          register: common_test_link
+
+        - name: Check that check mode shows the change and writes no link
+          ansible.builtin.assert:
+            that:
+              - common_default_target_result is changed
+              - common_test_link.stat.lnk_target == '/usr/lib/systemd/system/graphical.target'
+              - common_display_manager_stop_result is not failed
+            quiet: true
+
+        - name: Run the tasks with a target that is not a choice
+          block:
+            - name: Run the tasks with the target multi-user
+              ansible.builtin.include_role:
+                name: dan_petty.infra.common
+                tasks_from: default_target
+              vars:
+                common_default_target: multi-user
+
+            - name: Stop the case when the argument check accepts the target
+              ansible.builtin.fail:
+                msg: The argument check accepted the target multi-user.
+          rescue:
+            - name: Check that the argument check named common_default_target
+              ansible.builtin.assert:
+                that:
+                  - ansible_failed_result.argument_errors is defined
+                  - "'common_default_target' in ansible_failed_result.msg"
+                fail_msg: "The role did not stop at the argument check: {{ ansible_failed_result.msg | default('') }}"
+                quiet: true
+      always:
+        - name: Remove the temporary folder
+          ansible.builtin.file:
+            path: "{{ common_test_dir.path }}"
+            state: absent

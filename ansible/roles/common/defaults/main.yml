@@ -58,3 +58,8 @@ common_system_upgrade_on_bootstrap: true
 common_system_upgrade_type: "dist"
 common_system_upgrade_autoremove: true
 common_system_upgrade_clean: true
+
+# The systemd default target (tasks/default_target.yml). common_default_target has no default: a
+# host that does not set it keeps its default target.
+common_display_manager_stop: false
+common_default_target_link: "/etc/systemd/system/default.target"

@@ -16,7 +16,7 @@ gives the hosts and the values.
 
 | Role | Play | Content |
 | --- | --- | --- |
-| [`common`](roles/common/README.md) | None | Baseline configuration for Debian k3s nodes: APT sources, headless GRUB, base packages, automation user, kernel modules, sysctl, and UFW firewall. |
+| [`common`](roles/common/README.md) | None | Baseline configuration for Debian k3s nodes: APT sources, headless GRUB, an optional systemd default target, base packages, automation user, kernel modules, sysctl, and UFW firewall. |
 | [`data_disk`](roles/data_disk/README.md) | `08_mount_nvme.yml` | Format and mount dedicated data block devices (such as NVMe storage). |
 | [`nvidia`](roles/nvidia/README.md) | None | The NVIDIA driver and the NVIDIA Container Toolkit of a Debian k3s node, a driver branch pin and a GPU power limit. |
 | [`gvisor`](roles/gvisor/README.md) | `gvisor.yml` | The pinned gVisor runtime (`runsc`) of a Debian k3s node, and the node label of its RuntimeClass. |

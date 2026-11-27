@@ -5,6 +5,8 @@ argument_specs:
     description:
       - Configure Debian APT sources using DEB822 format.
       - Configure GRUB for unattended headless booting.
+      - Set the systemd default target, and stop a running display manager, only when the host
+        sets the variables of the default target (entry point default_target).
       - Install baseline system packages and set up the dedicated Ansible automation user.
       - Load and persist kernel modules, and apply sysctl parameters for K8s networking.
       - Configure UFW firewall allowing SSH, k3s cluster CIDRs and optional site CIDRs.
@@ -111,3 +113,53 @@ argument_specs:
         type: bool
         default: true
         description: Whether to clean apt cache archives.
+      common_default_target:
+        type: str
+        choices:
+          - multi-user.target
+          - graphical.target
+        description:
+          - The systemd default target of the host. multi-user.target boots with no display
+            manager, and graphical.target boots with it.
+          - Not set means the role does not change the default target.
+          - The role writes the link that systemctl set-default writes. The target takes effect at
+            the next boot. The role does not reboot the host and does not run systemctl isolate.
+      common_display_manager_stop:
+        type: bool
+        default: false
+        description:
+          - Whether the role stops display-manager.service when common_default_target is
+            multi-user.target and the unit runs. The stop ends a local desktop session.
+          - The unit stays enabled and the desktop packages stay installed.
+      common_default_target_link:
+        type: str
+        default: /etc/systemd/system/default.target
+        description: The link that sets the systemd default target. A test sets a temporary path.
+  default_target:
+    short_description: Set the systemd default target, and stop a running display manager.
+    description:
+      - The tasks of the default target alone, for include_role with tasks_from default_target.
+      - With no common_default_target, the tasks change nothing.
+    options:
+      common_default_target:
+        type: str
+        choices:
+          - multi-user.target
+          - graphical.target
+        description:
+          - The systemd default target of the host. multi-user.target boots with no display
+            manager, and graphical.target boots with it.
+          - Not set means the role does not change the default target.
+          - The role writes the link that systemctl set-default writes. The target takes effect at
+            the next boot. The role does not reboot the host and does not run systemctl isolate.
+      common_display_manager_stop:
+        type: bool
+        default: false
+        description:
+          - Whether the role stops display-manager.service when common_default_target is
+            multi-user.target and the unit runs. The stop ends a local desktop session.
+          - The unit stays enabled and the desktop packages stay installed.
+      common_default_target_link:
+        type: str
+        default: /etc/systemd/system/default.target
+        description: The link that sets the systemd default target. A test sets a temporary path.
