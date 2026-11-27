@@ -114,6 +114,20 @@ else
   failures=$((failures + 1))
 fi
 
+# The copier update runs `copier update` on a clean branch. In the group infra, the other managers
+# change files of the branch first, and copier stops ("Destination repository is dirty", #216).
+# So each rule of renovate/k8s.json that sets the group infra leaves the copier manager out.
+cases=$((cases + 1))
+if jq -e '
+  [.packageRules[] | select(.groupName == "infra")] as $groups
+  | ($groups | length) > 0 and all($groups[]; (.matchManagers // []) | index("!copier") != null)
+' "$root/renovate/k8s.json" >/dev/null 2>&1; then
+  echo "ok   renovate/k8s.json: the group infra leaves the copier update out"
+else
+  echo "FAIL renovate/k8s.json: the group infra takes the copier update"
+  failures=$((failures + 1))
+fi
+
 mkdir "$work/repo"
 cp -R "$root/tests/renovate/." "$work/repo/"
 if ! jq -n --slurpfile base "$root/renovate/base.json" --slurpfile k8s "$root/renovate/k8s.json" '
