@@ -1,0 +1,11 @@
+# Tasks
+
+## 1. Add the container start series to the kube-state-metrics allowlist
+
+Kind: other. Reads: `helm/k8s-monitoring/values.yaml`, `helm/k8s-monitoring/test-chart/Chart.yaml`, `scripts/k8s-validate.sh`, `README.md`, `helm/README.md`. Changes: `helm/k8s-monitoring/values.yaml`.
+
+- [ ] 1.1 Add one list item with the name kube_pod_container_state_started to `helm/k8s-monitoring/values.yaml`, in the includeMetrics list of clusterMetrics.kube-state-metrics, directly after the kube_pod_container_status_waiting entry; keep the eight spaces of indentation of the neighbouring names and the order of the other names, change no other line of the file, and add no flag to the kube-state-metrics Deployment block of telemetryServices, and run this check by hand: 1. On a workstation with the tools of mise.toml installed, make an empty folder outside the repository, and run from the repository root `RENDERED=<folder> KUSTOMIZE_ROOTS= HELM_CHARTS=helm/k8s-monitoring/test-chart PROMTOOL_RULES= TRIVY_IGNORE_FILE=helm/.trivyignore.yaml mise exec -- scripts/k8s-validate.sh all`: it exits with status 0 and prints a line that starts with helm lint and helm template helm/k8s-monitoring/test-chart. 2. Run `grep -rl kube_pod_container_state_started <folder>`: it names one file, `<folder>/1-helm-k8s-monitoring/default/ConfigMap-k8s-monitoring-alloy-metrics.yaml`, the Alloy configuration of the alloy-metrics collector, and no Deployment file. 3. In that file, the name is in the regex of the keep rule of the block `prometheus.relabel "kube_state_metrics"`, directly after kube_pod_container_status_waiting.
+
+## Workflow follow-up
+
+- Pending a person: the series reaches a cluster only through an infra release that holds this change and a later move of the pinned infra tag of the consumer's k8s-monitoring Application to that release (a Renovate update of the infra tag). After Argo CD syncs that update and a new pod starts, run `devops prometheus query 'count(kube_pod_container_state_started)'`: it returns a count above 0 (it returned no result on 2026-11-27); then run `devops prometheus query 'kube_pod_container_state_started{namespace="devops"}'`: it returns one series for each container of a new runner Job pod. Report the result on dan-petty/devops-cli#4616.
