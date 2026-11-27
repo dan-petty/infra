@@ -11,8 +11,6 @@ Kind: other. Reads: `k8s/tests/service-repos/services/example.yaml`, `k8s/tests/
 Kind: other. Reads: `k8s/bases/service-repos/applicationsets.yaml`, `tests/test-service-repos.sh`. Changes: `docs/service-repos.md`.
 
 - [ ] 2.1 Add a row for `argocd-image-updater.argoproj.io/<alias>.force-update` with the value `true` to the annotation table of `docs/service-repos.md`, and one sentence on why the annotation is needed: the AppProject permits no Pod and no ReplicaSet, so the Application status holds no image, and Image Updater considers an image only with this annotation, and run this check by hand: Read the annotation table of `docs/service-repos.md` and compare it with the annotation lines of `k8s/bases/service-repos/applicationsets.yaml`: the table names each of the four annotations, and the force-update row says that Image Updater considers an image that the Application status omits.
-- [ ] 2.2 Edit `docs/service-repos.md` to add the force-update row and its reason to the annotation table
-  - Verification: `$ uv run devops ci docs` passes
 
 ## Criteria
 
