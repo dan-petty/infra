@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/dan-petty/infra/compare/v0.25.3...v0.26.0) (2026-11-27)
+
+
+### Features
+
+* **templates:** add the OpenSpec folders of openspec init ([#229](https://github.com/dan-petty/infra/issues/229)) ([6656e71](https://github.com/dan-petty/infra/commit/6656e7198925edda1c817b355d37715405cb4ff9))
+
 ## [0.25.3](https://github.com/dan-petty/infra/compare/v0.25.2...v0.25.3) (2026-11-27)
 
 
