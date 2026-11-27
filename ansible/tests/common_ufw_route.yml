@@ -1,0 +1,43 @@
+---
+# Test of the role common: one UFW route rule drops the IPv6 link-local multicast that k3s pods send
+# across their bridge, so UFW writes no [UFW BLOCK] line for it. The test reads the task list of the
+# source tree and runs no task on a host. The import has `when: false`, so the play gets the
+# defaults of the role.
+- name: Check the UFW route rule of the common role
+  hosts: k3s_server
+  gather_facts: false
+  vars:
+    common_bridge_reference: !unsafe "{{ common_k3s_bridge_interface }}"
+    common_tasks: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../roles/common/tasks/main.yml') | from_yaml }}"
+    common_route_rules: >-
+      {{ common_tasks | select('contains', 'community.general.ufw') | map('dict2items')
+         | map('selectattr', 'key', 'eq', 'community.general.ufw') | map('first')
+         | map(attribute='value') | selectattr('route', 'defined') | selectattr('route') | list }}
+  tasks:
+    - name: Import the common role with no task
+      ansible.builtin.import_role:
+        name: dan_petty.infra.common
+      when: false
+
+    - name: Check that the bridge of k3s is cni0 by default
+      ansible.builtin.assert:
+        that:
+          - common_k3s_bridge_interface == 'cni0'
+        quiet: true
+
+    - name: Check the route rule of the bridge
+      vars:
+        common_route_rule: "{{ common_route_rules | first | default({}) }}"
+      ansible.builtin.assert:
+        that:
+          - common_route_rules | length == 1
+          - common_route_rule.rule == 'deny'
+          - common_route_rule.interface_in == common_bridge_reference
+          - common_route_rule.interface_out == common_bridge_reference
+          - common_route_rule.to_ip == 'ff02::/16'
+          - common_route_rule.from_ip | default('any') == 'any'
+          - common_route_rule.comment | default('') | length > 0
+          - "'log' not in common_route_rule"
+          - "'logging' not in common_route_rule"
+        fail_msg: "The role has no route rule that drops the multicast on the bridge: {{ common_route_rules }}"
+        quiet: true
