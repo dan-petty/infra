@@ -7,8 +7,9 @@
 #   - the set of files: the release files only when the release flow is on, version.txt only for
 #     the release type simple, and no file with the suffix .jinja,
 #   - actionlint on the workflows, yamllint --strict on each YAML file, tomllib on
-#     .devops/project.toml, pre-commit validate-config, and the schema spec-driven of
-#     openspec/config.yaml,
+#     .devops/project.toml, pre-commit validate-config, the schema spec-driven of
+#     openspec/config.yaml, and the empty .gitkeep files of openspec/specs/ and
+#     openspec/changes/archive/ that `openspec init` writes (git keeps no empty folder),
 #   - check-jsonschema: github/repository.yaml with templates/github-repository.schema.json, and the
 #     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
 #   - the config validator of Renovate, in strict mode, on .github/renovate.json,
@@ -128,6 +129,8 @@ validate() {
   check "$1: .devops/project.toml is TOML" python -c \
     'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$dir/.devops/project.toml"
   expect "$1: the OpenSpec schema" "spec-driven" "$(yq -r '.schema' "$dir/openspec/config.yaml")"
+  expect "$1: the empty placeholders of the OpenSpec folders" "0 0" \
+    "$(stat -c %s "$dir/openspec/specs/.gitkeep" "$dir/openspec/changes/archive/.gitkeep" | xargs)"
   check "$1: github/repository.yaml matches its schema" check-jsonschema \
     --schemafile "$root/templates/github-repository.schema.json" "$dir/github/repository.yaml"
   if [ -f "$dir/release-please-config.json" ]; then
@@ -165,7 +168,9 @@ common='.copier-answers.yml
 .github/workflows/pr-title.yml
 .pre-commit-config.yaml
 github/repository.yaml
-openspec/config.yaml'
+openspec/changes/archive/.gitkeep
+openspec/config.yaml
+openspec/specs/.gitkeep'
 release='.github/workflows/release.yml
 .release-please-manifest.json
 release-please-config.json'

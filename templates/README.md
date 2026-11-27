@@ -47,6 +47,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `.pre-commit-config.yaml` | The hooks of `pre-commit-hooks`: no commit on `main`, the syntax of the YAML, JSON and TOML files, no private key, no large file, no conflict marker, and LF line endings with no trailing whitespace. infra's Renovate updates `rev` in the template. |
 | `github/repository.yaml` | The settings baseline ("Settings baseline"). |
 | `openspec/config.yaml` | The OpenSpec config, with the schema `spec-driven`. The file tells devops-cli that the repository plans each roadmap item as an OpenSpec change. Its rules are those of the jobs of devops-cli, and its context holds no fact of the repository: a person writes the first line, which tells what the repository makes. |
+| `openspec/specs/.gitkeep`, `openspec/changes/archive/.gitkeep` | Empty files that keep the folders of the specs and of the archived changes, as `openspec init` writes them. Git keeps no empty folder, and the OpenSpec row of `devops repos onboard` reads `openspec/specs/` on the default branch. |
 | `.devops/project.toml` | The project profile of devops-cli, with no key: a new repository has no fact that the detection of devops-cli does not find. devops-cli owns its keys. |
 
 A file that only one repository needs stays in that repository.
@@ -139,7 +140,8 @@ checks the rendered files:
 - the set of files of the answer set, and no file with the suffix `.jinja`,
 - `actionlint` on the workflows, `yamllint --strict` with `.yamllint.yaml` on each YAML file,
   `tomllib` on `.devops/project.toml`, `pre-commit validate-config` on `.pre-commit-config.yaml`,
-  and the schema `spec-driven` of `openspec/config.yaml`,
+  the schema `spec-driven` of `openspec/config.yaml`, and the empty `.gitkeep` files of
+  `openspec/specs/` and `openspec/changes/archive/`,
 - `check-jsonschema`: `github/repository.yaml` with `github-repository.schema.json`, and the
   release-please files with the schemas of the release-please release of the test,
 - the config validator of Renovate, in strict mode, on `.github/renovate.json`,
