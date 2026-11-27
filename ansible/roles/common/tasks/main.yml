@@ -100,6 +100,19 @@
     - "{{ common_k3s_pod_cidr }}"
     - "{{ common_k3s_service_cidr }}"
 
+# With net.bridge.bridge-nf-call-ip6tables, each IPv6 frame between two pods of the node goes
+# through the ip6tables FORWARD chain. The routed policy of UFW drops the link-local multicast of
+# the pods (router solicitations, MLD reports, neighbor solicitations) and logs each frame. This
+# rule drops the same frames in ufw6-user-forward, before ufw6-after-logging-forward logs them.
+- name: Drop IPv6 link-local multicast between pods on the k3s bridge with no log
+  community.general.ufw:
+    route: true
+    rule: deny
+    interface_in: "{{ common_k3s_bridge_interface }}"
+    interface_out: "{{ common_k3s_bridge_interface }}"
+    to_ip: ff02::/16
+    comment: "K3s pod IPv6 multicast"
+
 - name: Ensure UFW firewall is enabled with default incoming policy
   community.general.ufw:
     state: enabled

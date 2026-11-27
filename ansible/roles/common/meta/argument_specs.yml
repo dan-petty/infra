@@ -8,6 +8,7 @@ argument_specs:
       - Install baseline system packages and set up the dedicated Ansible automation user.
       - Load and persist kernel modules, and apply sysctl parameters for K8s networking.
       - Configure UFW firewall allowing SSH, k3s cluster CIDRs and optional site CIDRs.
+      - Drop the IPv6 link-local multicast between k3s pods on their bridge with no UFW log line.
     options:
       common_apt_suite:
         type: str
@@ -26,6 +27,12 @@ argument_specs:
         type: str
         default: "10.43.0.0/16"
         description: Default k3s service CIDR block allowed through UFW.
+      common_k3s_bridge_interface:
+        type: str
+        default: "cni0"
+        description:
+          - The bridge of the k3s pods on the node (flannel names it cni0).
+          - A UFW route rule drops the IPv6 link-local multicast between pods on this bridge with no log line.
       common_base_packages:
         type: list
         elements: str

@@ -9,6 +9,7 @@ The role `dan_petty.infra.common` provisions the baseline configuration of a Deb
 - Applies sysctl networking parameters.
 - Disables swap memory.
 - Enables and configures UFW firewall, allowing OpenSSH, the k3s cluster CIDRs, and any configured site CIDRs.
+- Drops the IPv6 link-local multicast between k3s pods with no log line (see "IPv6 multicast of the pods").
 
 ## Variables
 
@@ -20,6 +21,7 @@ The role `dan_petty.infra.common` provisions the baseline configuration of a Deb
 | `common_ufw_allowed_cidrs` | `[]` | List of site CIDR blocks allowed through UFW. |
 | `common_k3s_pod_cidr` | `10.42.0.0/16` | The k3s default pod CIDR block. |
 | `common_k3s_service_cidr` | `10.43.0.0/16` | The k3s default service CIDR block. |
+| `common_k3s_bridge_interface` | `cni0` | The bridge of the k3s pods (flannel). The UFW route rule for IPv6 multicast uses it. |
 | `common_base_packages` | Standard system packages list | List of system packages to install. |
 | `common_kernel_modules` | `overlay`, `br_netfilter`, `ip_tables`, `iptable_nat`, `iptable_filter` | Kernel modules required for K8s. |
 | `common_sysctl_params` | Standard sysctl map | Sysctl key-value pairs applied to `/etc/sysctl.d/99-k3s-cri.conf`. |
@@ -31,6 +33,26 @@ The role `dan_petty.infra.common` provisions the baseline configuration of a Deb
 | `common_system_upgrade_type` | `dist` | Package upgrade type (`dist` or `safe`). |
 | `common_system_upgrade_autoremove` | `true` | Whether to autoremove orphaned packages. |
 | `common_system_upgrade_clean` | `true` | Whether to clean APT cache archives. |
+
+## IPv6 multicast of the pods
+
+The role sets `net.bridge.bridge-nf-call-ip6tables: 1`, so each IPv6 frame between two pods on the
+bridge goes through the `ip6tables` FORWARD chain. The pods send link-local multicast: router
+solicitations, MLD reports and neighbor solicitations to `ff02::/16`. The routed policy of UFW drops
+these frames, and at the log level `low` (the UFW default) it writes a `[UFW BLOCK]` line for each
+one. These lines fill the UFW log limit and hide other kernel messages.
+
+With the default `common_k3s_bridge_interface`, the role adds this rule:
+
+```sh
+ufw route deny in on cni0 out on cni0 to ff02::/16 comment 'K3s pod IPv6 multicast'
+```
+
+UFW puts the rule into `ufw6-user-forward`. The last rule of `ufw6-before-forward` jumps to that
+chain, and the FORWARD chain reaches `ufw6-after-logging-forward` only after it. So the rule drops
+the frames before the logging chain sees them. The frames stay dropped, as they were before, and
+UFW writes no line for them. The rule has no source address, so it also matches the frames from
+`::` that a pod sends while it checks its link-local address. Other blocked traffic is still logged.
 
 ## Run the role
 
