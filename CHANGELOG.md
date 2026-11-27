@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.2](https://github.com/dan-petty/infra/compare/v0.25.1...v0.25.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **deps:** give the copier update of infra its own branch ([#222](https://github.com/dan-petty/infra/issues/222)) ([011160b](https://github.com/dan-petty/infra/commit/011160b75a9659313fc4227a77fb9efe79382cb9)), closes [#216](https://github.com/dan-petty/infra/issues/216)
+
 ## [0.25.1](https://github.com/dan-petty/infra/compare/v0.25.0...v0.25.1) (2026-11-27)
 
 
