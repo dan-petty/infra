@@ -77,6 +77,11 @@ clusterEvents:
 podLogsViaLoki:
   enabled: true
   collector: alloy-logs
+  # Read a new pod log file from its first line (`tail_from_end = false`). With the chart default,
+  # a pod that writes its whole log before the next file match (each 10 s) loses each line. The
+  # preset host-storage of alloy-logs keeps the read positions on the node, so a restart resumes
+  # each known file at its position and sends no line again.
+  onlyGatherNewLogLines: false
 
 nodeLogs:
   enabled: true
