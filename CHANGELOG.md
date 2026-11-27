@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/dan-petty/infra/compare/v0.26.0...v0.26.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **helm:** keep the log lines of pods that end in seconds ([#232](https://github.com/dan-petty/infra/issues/232)) ([1815b7b](https://github.com/dan-petty/infra/commit/1815b7b1d1e395d5967ae0640333c12075e49e88))
+
 ## [0.26.0](https://github.com/dan-petty/infra/compare/v0.25.3...v0.26.0) (2026-11-27)
 
 
