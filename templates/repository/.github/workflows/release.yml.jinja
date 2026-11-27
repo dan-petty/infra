@@ -8,7 +8,9 @@ name: Release
 # The repository holds no secret of its own.
 # The caller must pass the secret by name, and the job gets the value of the secret of the
 # environment. The caller passes no other secret: no `secrets: inherit`.
-# The caller pins the release tag of infra that rendered this file, and `copier update` changes it.
+# The caller pins the commit of the release tag of infra that rendered this file, with the tag in a
+# comment: the form of a digest pin of the github-actions manager of Renovate. `copier update`
+# changes both.
 on:
   push:
     branches:
@@ -23,7 +25,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    uses: dan-petty/infra/.github/workflows/release.yml@{{ infra_ref }}
+    uses: dan-petty/infra/.github/workflows/release.yml@{{ _copier_conf.vcs_ref_hash or vcs_ref_hash_missing | mandatory("Copier gives no commit of the template. Render a git repository, such as a release tag of https://github.com/dan-petty/infra.git.") }} # {{ infra_ref }}
     # The token of the release App writes the release; the job token gets no permission.
     permissions: {}
     secrets:

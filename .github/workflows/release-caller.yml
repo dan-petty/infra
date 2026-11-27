@@ -1,10 +1,10 @@
 name: Release
 
 # The releases of infra (README.md, "Releases"). On each push to main, the job calls the reusable
-# workflow release.yml of the same commit, as each other repository calls it at a release tag. Thus
-# each release of infra also tests the workflow. The release pull request holds the next version in
-# version.txt, .release-please-manifest.json and ansible/galaxy.yml, and the next tag in
-# k8s/bases/service-repos/applicationsets.yaml (release-please-config.json).
+# workflow release.yml of the same commit, as each other repository calls it at the commit of a
+# release tag. Thus each release of infra also tests the workflow. The release pull request holds
+# the next version in version.txt, .release-please-manifest.json and ansible/galaxy.yml, and the
+# next tag in k8s/bases/service-repos/applicationsets.yaml (release-please-config.json).
 on:
   push:
     branches:

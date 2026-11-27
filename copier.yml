@@ -68,9 +68,10 @@ code_coverage:
     default is false. Answer true for a repository that reports coverage.
   default: false
 
-# The release tag of infra that the callers of the reusable workflows pin. Copier gives _commit, the
-# tag that it renders, so the callers always call the workflows of that tag. Copier does not ask it
-# and does not write it into .copier-answers.yml, so `copier update` gives the callers the new tag.
+# The release tag of infra in the comment of each caller of a reusable workflow. Copier gives
+# _commit, the tag that it renders. The caller pins _copier_conf.vcs_ref_hash, the commit of that
+# tag, so it always calls the workflows of that tag. Copier does not ask it and does not write it
+# into .copier-answers.yml, so `copier update` gives the callers the new tag and its commit.
 infra_ref:
   type: str
   when: false

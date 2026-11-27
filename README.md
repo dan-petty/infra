@@ -49,7 +49,12 @@ More templates come with later items, such as #14 to
 
 ## Pin a release
 
-A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updates each pin.
+A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updates each pin. A
+caller of a reusable workflow pins `<sha>`, the commit of the tag (`git rev-parse vX.Y.Z^{commit}`),
+with the tag in a comment: the github-actions manager of Renovate writes this form for a digest pin
+(`pinDigests` of [renovate/base.json](renovate/base.json)), and a repository with a supply-chain
+rule refuses a bare tag. The commit of the tag is the digest that Renovate reads, also for an
+annotated tag.
 
 | Form | Pin |
 | --- | --- |
@@ -57,7 +62,7 @@ A consumer pins infra at a release tag `vX.Y.Z`, never at `main`. Renovate updat
 | Argo CD source | `repoURL: https://github.com/dan-petty/infra.git` with `targetRevision: vX.Y.Z` |
 | Ansible collection | `name: https://github.com/dan-petty/infra.git#/ansible/`, `type: git`, `version: vX.Y.Z` |
 | OpenTofu module | `git::https://github.com/dan-petty/infra.git//tf/modules/<module>?ref=vX.Y.Z` |
-| Reusable workflow | `uses: dan-petty/infra/.github/workflows/<workflow>.yml@vX.Y.Z` |
+| Reusable workflow | `uses: dan-petty/infra/.github/workflows/<workflow>.yml@<sha> # vX.Y.Z` |
 | Copier template | `copier copy --vcs-ref vX.Y.Z https://github.com/dan-petty/infra.git <dir>`, which writes `_commit: vX.Y.Z` into `.copier-answers.yml` ([templates/README.md](templates/README.md)) |
 
 ## Releases
@@ -115,14 +120,15 @@ names it.
 
 ## Call the reusable workflows
 
-A repository calls a reusable workflow of infra at a release tag ("Pin a release"). The job that
-calls it gives the permissions that the called job needs: a called workflow can only reduce them.
-Each workflow runs the actions and the tools of its own infra commit, so a caller gets the versions
-of its tag. infra calls each workflow of its own commit, so its CI tests them: `ci.yml` calls
-`k8s-validate.yml`, `pr-title-caller.yml` calls `pr-title.yml` and `release-caller.yml` calls
-`release.yml`. The job YAML of `ci.yml` runs [zizmor](https://docs.zizmor.sh/) over the workflows:
-each action has a pin to a commit SHA, no job gets more permissions than it needs and no call passes
-`secrets: inherit`. `.github/zizmor.yml` holds its settings.
+A repository calls a reusable workflow of infra at the commit of a release tag ("Pin a release").
+The job that calls it gives the permissions that the called job needs: a called workflow can only
+reduce them. Each workflow runs the actions and the tools of its own infra commit, so a caller gets
+the versions of its tag. infra calls each workflow of its own commit, so its CI tests them:
+`ci.yml` calls `k8s-validate.yml`, `pr-title-caller.yml` calls `pr-title.yml` and
+`release-caller.yml` calls `release.yml`. The job YAML of `ci.yml` runs
+[zizmor](https://docs.zizmor.sh/) over the workflows: each action has a pin to a commit SHA, no job
+gets more permissions than it needs and no call passes `secrets: inherit`. `.github/zizmor.yml`
+holds its settings.
 
 `k8s-validate.yml` and `pr-title.yml` take the input `runs-on`, the runner label of the called job.
 Empty, the default, selects the GitHub-hosted runner `ubuntu-26.04`. A `workflow_call` input is a
@@ -157,7 +163,7 @@ infra commit, so a caller gets the tool versions of its tag.
 ```yaml
 jobs:
   k8s:
-    uses: dan-petty/infra/.github/workflows/k8s-validate.yml@vX.Y.Z
+    uses: dan-petty/infra/.github/workflows/k8s-validate.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
     with:
@@ -215,7 +221,7 @@ permissions: {}
 jobs:
   pr-title:
     name: PR title
-    uses: dan-petty/infra/.github/workflows/pr-title.yml@vX.Y.Z
+    uses: dan-petty/infra/.github/workflows/pr-title.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
       pull-requests: read
@@ -252,7 +258,7 @@ permissions: {}
 jobs:
   release:
     name: Release
-    uses: dan-petty/infra/.github/workflows/release.yml@vX.Y.Z
+    uses: dan-petty/infra/.github/workflows/release.yml@<sha> # vX.Y.Z
     permissions: {}
     secrets:
       RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

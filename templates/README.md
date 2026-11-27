@@ -28,7 +28,7 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `scopes` | empty | The Conventional Commit scopes of the repository, separated by commas. Each scope gets a label `scope/<scope>`. The template always adds `ci`, `deps` and `docs`. Copier refuses a scope that is not a lowercase name, and the scope `main` of the release pull request. |
 | `code_owner` | `@dan-petty` | The code owner of each file in `.github/CODEOWNERS`. |
 | `code_coverage` | `false` | Gate pull requests with a `code_coverage` rule in the ruleset `main` of `github/repository.yaml`, with `minimum_coverage: 80`. The default is `false`. Answer `true` for a repository that reports coverage. |
-| `infra_ref` | the tag that Copier renders | Copier does not ask it and does not write it into `.copier-answers.yml`. The default is `_commit`, so the callers of the reusable workflows pin the tag that rendered them. |
+| `infra_ref` | the tag that Copier renders | Copier does not ask it and does not write it into `.copier-answers.yml`. The default is `_commit`, the tag in the comment of each caller of a reusable workflow. The caller pins `_copier_conf.vcs_ref_hash`, the commit of that tag ("Files"). |
 
 ## Files
 
@@ -38,8 +38,8 @@ copier copy --vcs-ref vX.Y.Z --data scopes=api,worker https://github.com/dan-pet
 | `.github/renovate.json` | Extends `github>dan-petty/infra//renovate/base` ([renovate/README.md](../renovate/README.md)). |
 | `.github/labels.yml` | The labels of the repository only: one `scope/<scope>` label for each scope, and with the release flow the two `autorelease:` labels of release-please. The workflow labels come from devops-cli. |
 | `.github/CODEOWNERS` | `* <code_owner>`: GitHub asks the code owner to review each pull request. |
-| `.github/workflows/pr-title.yml` | Calls the reusable workflow `dan-petty/infra/.github/workflows/pr-title.yml@<infra_ref>`, which checks the pull request title. |
-| `.github/workflows/release.yml` | With the release flow: calls the reusable workflow `dan-petty/infra/.github/workflows/release.yml@<infra_ref>` on each push to `main`. It gives the job token no permission and passes the secret `RELEASE_APP_PRIVATE_KEY` by name, with no `secrets: inherit`. The job of the reusable workflow runs in the environment `release`, which holds the credentials of the release App, and gets the value of the secret of the environment. |
+| `.github/workflows/pr-title.yml` | Calls the reusable workflow `dan-petty/infra/.github/workflows/pr-title.yml@<sha> # <infra_ref>`, which checks the pull request title. `<sha>` is the commit that Copier renders (`_copier_conf.vcs_ref_hash`), the commit of the tag `<infra_ref>`. |
+| `.github/workflows/release.yml` | With the release flow: calls the reusable workflow `dan-petty/infra/.github/workflows/release.yml@<sha> # <infra_ref>` on each push to `main`. It gives the job token no permission and passes the secret `RELEASE_APP_PRIVATE_KEY` by name, with no `secrets: inherit`. The job of the reusable workflow runs in the environment `release`, which holds the credentials of the release App, and gets the value of the secret of the environment. |
 | `release-please-config.json`, `.release-please-manifest.json` | With the release flow: the release type, the tag `vX.Y.Z` and the first release `v0.1.0`. |
 | `version.txt` | With the release type `simple`: the version that release-please writes. |
 | `.pre-commit-config.yaml` | The hooks of `pre-commit-hooks`: no commit on `main`, the syntax of the YAML, JSON and TOML files, no private key, no large file, no conflict marker, and LF line endings with no trailing whitespace. infra's Renovate updates `rev` in the template. |
@@ -79,7 +79,23 @@ The template has no release of its own: each release tag `vX.Y.Z` of infra is a 
 template (README.md, "Releases"). The copier manager of Renovate reads `_commit` of
 `.copier-answers.yml` in each rendered repository, and proposes each new tag of infra. Its pull
 request runs `copier update`, which renders the new tag with the answers of the file, so the
-callers of the reusable workflows also get the new tag.
+callers of the reusable workflows also get the commit of the new tag, with the new tag in the
+comment.
+
+The github-actions manager of Renovate also reads each caller, as a digest pin with the version in
+its comment, and proposes the same new tag in its own pull request. It writes `@<sha> # vX.Y.Z`,
+where `<sha>` is the commit of the tag, also for an annotated tag: the same text that Copier
+renders. So the pull request that merges second makes no conflict: Git merges the same change on
+two sides, and the 3-way merge of `copier update` keeps a caller that Renovate already moved to the
+new tag. The test of the template proves this ("Test").
+
+A repository that also extends `renovate/k8s` does not get this update today. The group `infra` of
+`renovate/k8s.json` also holds the copier dependency, so Renovate puts the copier update into the
+branch of the other pins of infra. The other managers change files in that branch first, and
+`copier update` stops with "Destination repository is dirty". The pull request then changes only
+the pins, and `_commit` stays at its old tag. dan-petty/homelab and dan-petty/danielpetty.com are
+such repositories: their `_commit` is `v0.24.1`. #216 takes the copier dependency out of the group,
+and runs the catch-up `copier update --vcs-ref <release>` in the two repositories.
 
 A change that a rendered repository cannot take with `copier update` and its answers is a breaking
 change: for example, a question with no default, or a question with a new name. Write it with `!`
@@ -100,9 +116,16 @@ checks the rendered files:
 - `check-jsonschema`: `github/repository.yaml` with `github-repository.schema.json`, and the
   release-please files with the schemas of the release-please release of the test,
 - the config validator of Renovate, in strict mode, on `.github/renovate.json`,
-- the answers in the files: the scope labels, the release type, the environment `release`, the tag
-  of infra in the callers (`infra_ref`, else `_commit`), the secret that the release caller passes
-  by name, and the code owner,
+- the answers in the files: the scope labels, the release type, the environment `release`, the
+  secret that the release caller passes by name, and the code owner,
+- each caller of a reusable workflow of infra: a commit SHA of 40 characters, with the tag of infra
+  (`infra_ref`, else `_commit`) in a comment, and no bare tag,
+- a render of a lightweight tag of a git repository that holds the template: each caller pins
+  `git rev-parse <tag>^{commit}`. Then the test moves the callers to the next tag as Renovate does,
+  and `copier update --skip-answered --defaults` to that tag gives no conflict and leaves the
+  callers as they are,
+- that a render of a template folder with no git fails with the message "Copier gives no commit of
+  the template", so no caller gets `@None`,
 - that infra holds each workflow that a caller calls as a reusable workflow (`on: workflow_call`),
   with each secret that the release caller passes. A release tag of infra then holds each workflow
   that the repositories rendered at that tag call,

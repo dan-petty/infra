@@ -14,8 +14,8 @@ name: PR Title
 # and docs of the repository template and the updates of Renovate, main of the release pull request
 # of release-please, and spec of the plan pull request of devops-cli. The job reads the labels file
 # of the commit of the run, so a pull request that adds a scope label can use that scope in its
-# title. Another repository calls the workflow at a release tag of infra, which Renovate updates
-# (README.md, "Call the reusable workflows"):
+# title. Another repository calls the workflow at the commit <sha> of a release tag of infra, with
+# the tag in a comment, and Renovate updates both (README.md, "Call the reusable workflows"):
 #
 #   on:
 #     pull_request:
@@ -26,7 +26,7 @@ name: PR Title
 #   jobs:
 #     pr-title:
 #       name: PR title
-#       uses: dan-petty/infra/.github/workflows/pr-title.yml@vX.Y.Z
+#       uses: dan-petty/infra/.github/workflows/pr-title.yml@<sha> # vX.Y.Z
 #       permissions:
 #         contents: read
 #         pull-requests: read
