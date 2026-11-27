@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.3](https://github.com/dan-petty/infra/compare/v0.25.2...v0.25.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* **templates:** give each template file one owner ([#226](https://github.com/dan-petty/infra/issues/226)) ([a8ac12a](https://github.com/dan-petty/infra/commit/a8ac12a191d4de8f5b83270efcb6b66cb89e782b))
+
 ## [0.25.2](https://github.com/dan-petty/infra/compare/v0.25.1...v0.25.2) (2026-11-27)
 
 
