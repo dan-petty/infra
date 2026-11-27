@@ -92,6 +92,28 @@ fi
 
 # The consumer repository: a copy of the fixture, with the merged presets as its renovate.json. The
 # local platform lists the files of the repository with git ls-files.
+# Each manager names infra in its own form, and the title takes that name. Each form gets a topic
+# that starts with dan-petty/infra, from a rule after each other rule that sets a topic, so that the
+# title stays within the 60 characters of the title check.
+cases=$((cases + 1))
+if jq -e '
+  .packageRules as $rules
+  | [range(0; $rules | length) | select($rules[.].commitMessageTopic != null)] as $topics
+  | [$topics[] | select($rules[.].commitMessageTopic | startswith("dan-petty/infra") | not)] as $others
+  | all("dan-petty/infra", "github.com/dan-petty/infra", "https://github.com/dan-petty/infra",
+      "https://github.com/dan-petty/infra.git";
+      . as $name
+      | any($topics[] as $i | $rules[$i]
+        | select(.commitMessageTopic | startswith("dan-petty/infra"))
+        | select(any(.matchPackageNames[]?; . as $p | startswith("/") and ($name | test($p[1:-1]))))
+        | $i > ($others | max // -1); .))
+' "$root/renovate/base.json" >/dev/null 2>&1; then
+  echo "ok   renovate/base.json: each form of the infra name gets the topic dan-petty/infra"
+else
+  echo "FAIL renovate/base.json: a form of the infra name keeps its own name in the title"
+  failures=$((failures + 1))
+fi
+
 mkdir "$work/repo"
 cp -R "$root/tests/renovate/." "$work/repo/"
 if ! jq -n --slurpfile base "$root/renovate/base.json" --slurpfile k8s "$root/renovate/k8s.json" '
