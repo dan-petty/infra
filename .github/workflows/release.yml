@@ -5,8 +5,9 @@ name: Release
 # holds the next version in the files of the release-please config of the caller, and the new entry
 # of CHANGELOG.md. The workflow turns on auto-merge on the release pull request, and GitHub merges
 # it when its required checks pass. The next run creates the tag vX.Y.Z and
-# its GitHub release. Another repository calls the workflow at a release tag of infra, which
-# Renovate updates (README.md, "Call the reusable workflows"):
+# its GitHub release. Another repository calls the workflow at the commit <sha> of a release tag of
+# infra, with the tag in a comment, and Renovate updates both (README.md, "Call the reusable
+# workflows"):
 #
 #   on:
 #     push:
@@ -16,7 +17,7 @@ name: Release
 #   jobs:
 #     release:
 #       name: Release
-#       uses: dan-petty/infra/.github/workflows/release.yml@vX.Y.Z
+#       uses: dan-petty/infra/.github/workflows/release.yml@<sha> # vX.Y.Z
 #       permissions: {}
 #       secrets:
 #         RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

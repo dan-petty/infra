@@ -2,11 +2,12 @@ name: K8s Validate
 
 # The shared checks of Kubernetes manifests, Helm charts and Prometheus rules, as a reusable
 # workflow. .github/workflows/ci.yml calls it for the fixtures of infra. Another repository calls it
-# at a release tag of infra, which Renovate updates:
+# at the commit <sha> of a release tag of infra, with the tag in a comment, and Renovate updates both
+# (README.md, "Pin a release"):
 #
 #   jobs:
 #     k8s:
-#       uses: dan-petty/infra/.github/workflows/k8s-validate.yml@vX.Y.Z
+#       uses: dan-petty/infra/.github/workflows/k8s-validate.yml@<sha> # vX.Y.Z
 #       permissions:
 #         contents: read
 #       with:

@@ -13,8 +13,11 @@
 #     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
 #   - the config validator of Renovate, in strict mode, on .github/renovate.json,
 #   - the answers in the files: the scope labels, the release type, the environment release, the
-#     tag of infra in the callers of the reusable workflows (infra_ref, else _commit), the secret
-#     that the release caller passes by name, and the code owner,
+#     secret that the release caller passes by name, and the code owner,
+#   - the pin of each caller of a reusable workflow of infra: the commit that Copier renders, with
+#     the tag of infra (infra_ref, else _commit) in a comment, and no bare tag,
+#   - a render of a lightweight release tag: each caller pins the commit of the tag, and a
+#     `copier update` to the next tag gives no conflict when Renovate already moved the callers,
 #   - that infra holds each workflow that a caller calls as a reusable workflow, with each secret
 #     that the release caller passes,
 #   - that Copier refuses a scope that is not a lowercase name.
@@ -37,8 +40,8 @@ export PATH="$root/.venv/bin:$PATH"
 export npm_config_ignore_scripts=true npm_config_update_notifier=false npm_config_audit=false \
   npm_config_fund=false RENOVATE_BASE_DIR="$work/renovate"
 schemas="https://raw.githubusercontent.com/googleapis/release-please/v$RELEASE_PLEASE_VERSION/schemas"
-# The tag of infra that the callers of the reusable workflows pin. A render of a release tag gets
-# that tag; a render of HEAD gets the output of git describe, so the test gives a tag.
+# The tag of infra in the comment of the callers of the reusable workflows. A render of a release
+# tag gets that tag; a render of HEAD gets the output of git describe, so the test gives a tag.
 ref=v1.2.3
 
 # check NAME COMMAND...: run COMMAND, and count a non-zero exit as a failure with its output.
@@ -84,10 +87,34 @@ files() {
   (cd "$1" && find . -type f -printf '%P\n' | LC_ALL=C sort)
 }
 
-# validate NAME: the validators of each rendered file of $work/NAME.
+# pins DIR: each `uses:` line of a caller of infra in the workflows of DIR, with no indent, one on
+# each line, in sort order.
+pins() {
+  grep -h -E '^[[:space:]]*uses:.*dan-petty/infra/' "$1"/.github/workflows/*.yml |
+    sed -E 's/^[[:space:]]+//' | LC_ALL=C sort
+}
+
+# pinned DIR TAG: each caller of infra in the workflows of DIR pins a commit SHA of 40 characters,
+# with the comment `# TAG`, as the github-actions manager of Renovate writes a digest pin. It prints
+# each other caller, such as a bare tag, and fails also when DIR holds no caller of infra.
+pinned() {
+  local lines
+  lines="$(pins "$1")"
+  if [ -z "$lines" ]; then
+    echo "no caller of infra"
+    return 1
+  fi
+  ! printf '%s\n' "$lines" |
+    grep -v -E "^uses: dan-petty/infra/\.github/workflows/[a-z0-9-]+\.yml@[0-9a-f]{40} # ${2//./\\.}\$"
+}
+
+# validate NAME [TAG]: the validators of each rendered file of $work/NAME. TAG is the tag of infra in
+# the callers, by default $ref.
 validate() {
   local dir="$work/$1" yaml=()
   mapfile -t yaml < <(find "$dir" -type f \( -name '*.yaml' -o -name '*.yml' \) | LC_ALL=C sort)
+  check "$1: each caller of infra pins a commit SHA with the comment # ${2:-$ref}" \
+    pinned "$dir" "${2:-$ref}"
   check "$1: actionlint" actionlint "$dir"/.github/workflows/*.yml
   check "$1: yamllint --strict" yamllint --strict -c "$root/.yamllint.yaml" "${yaml[@]}"
   check "$1: pre-commit validate-config" pre-commit validate-config "$dir/.pre-commit-config.yaml"
@@ -139,8 +166,8 @@ expect "defaults: files" "$(printf '%s\n' "$common" | LC_ALL=C sort)" "$(files "
 expect "defaults: labels" "scope/ci scope/deps scope/docs" "$(labels defaults)"
 expect "defaults: no environment" "0" \
   "$(yq -r '.environments // [] | length' "$work/defaults/github/repository.yaml")"
-expect "defaults: the pin of the reusable PR title workflow" \
-  "dan-petty/infra/.github/workflows/pr-title.yml@$ref" "$(uses defaults pr-title.yml)"
+expect "defaults: the reusable PR title workflow" \
+  "dan-petty/infra/.github/workflows/pr-title.yml" "$(uses defaults pr-title.yml | sed 's/@.*//')"
 expect "defaults: code owner" "* @dan-petty" "$(grep -v '^#' "$work/defaults/.github/CODEOWNERS")"
 check "defaults: renovate-config-validator --strict" npx --yes --package "renovate@$RENOVATE_VERSION" \
   -- renovate-config-validator --strict "$work/defaults/.github/renovate.json"
@@ -159,11 +186,52 @@ expect "coverage: code_coverage is true in .copier-answers.yml" "true" \
 expect "coverage: minimum_coverage is 80" "80" \
   "$(yq -r '.rulesets[0].rules[] | select(.type == "code_coverage") | .parameters.minimum_coverage' "$work/coverage/github/repository.yaml")"
 
-# With no answer infra_ref, the callers pin _commit, the version of infra that Copier renders.
-check "commit: copier copy" copier copy --quiet --defaults --vcs-ref HEAD "$root" "$work/commit"
-expect "commit: the pin of the reusable PR title workflow" \
-  "dan-petty/infra/.github/workflows/pr-title.yml@$(yq -r '._commit' "$work/commit/.copier-answers.yml")" \
-  "$(uses commit pr-title.yml)"
+# A render of a release tag, as `devops repos onboard` renders it, with no answer infra_ref. The
+# source is a git repository with copier.yml and templates/ of the working tree, and lightweight
+# tags, as the release tags of infra. Each caller pins the commit of the tag, with the tag in a
+# comment: the text that the github-actions manager of Renovate writes for a digest pin of the tag.
+gitq() {
+  git -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false \
+    -c tag.gpgsign=false -c core.hooksPath=/dev/null -c init.defaultBranch=main "$@"
+}
+src="$work/src"
+mkdir "$src"
+cp -R "$root/copier.yml" "$root/templates" "$src/"
+gitq -C "$src" init --quiet
+gitq -C "$src" add --all
+gitq -C "$src" commit --quiet -m "the template"
+gitq -C "$src" tag v1.0.0
+first="$(git -C "$src" rev-parse 'v1.0.0^{commit}')"
+check "tag: copier copy" copier copy --quiet --defaults --vcs-ref v1.0.0 --data release_flow=true \
+  "$src" "$work/tag"
+validate tag v1.0.0
+expect "tag: _commit" "v1.0.0" "$(yq -r '._commit' "$work/tag/.copier-answers.yml")"
+expect "tag: each caller pins the commit of the tag" \
+  "uses: dan-petty/infra/.github/workflows/pr-title.yml@$first # v1.0.0
+uses: dan-petty/infra/.github/workflows/release.yml@$first # v1.0.0" "$(pins "$work/tag")"
+
+# The github-actions manager of Renovate moves the callers to the next tag before the copier
+# manager runs `copier update` (Renovate --skip-answered --defaults). Copier renders the same line,
+# so its 3-way merge gives no conflict, and the update leaves the callers as Renovate wrote them.
+gitq -C "$work/tag" init --quiet
+gitq -C "$work/tag" add --all
+gitq -C "$work/tag" commit --quiet -m "the render of v1.0.0"
+gitq -C "$src" commit --quiet --allow-empty -m "the next release"
+gitq -C "$src" tag v1.1.0
+next="$(git -C "$src" rev-parse 'v1.1.0^{commit}')"
+sed -i -E "s|(uses: dan-petty/infra/\.github/workflows/[a-z-]+\.yml)@.*\$|\1@$next # v1.1.0|" \
+  "$work/tag"/.github/workflows/*.yml
+gitq -C "$work/tag" commit --quiet --all -m "the update of Renovate to v1.1.0"
+check "update: copier update" copier update --quiet --skip-answered --defaults --vcs-ref v1.1.0 \
+  "$work/tag"
+expect "update: no conflict" "" \
+  "$(grep -rl --exclude-dir=.git -E '^(<<<<<<<|>>>>>>>)( |$)' "$work/tag" || true)"
+expect "update: the callers that Renovate moved stay the same" "" \
+  "$(git -C "$work/tag" status --porcelain --untracked-files=all -- .github/workflows)"
+expect "update: _commit" "v1.1.0" "$(yq -r '._commit' "$work/tag/.copier-answers.yml")"
+expect "update: each caller pins the commit of the next tag" \
+  "uses: dan-petty/infra/.github/workflows/pr-title.yml@$next # v1.1.0
+uses: dan-petty/infra/.github/workflows/release.yml@$next # v1.1.0" "$(pins "$work/tag")"
 
 # The release flow with each release type, and two scopes of the repository. A scope of the
 # template, here docs, comes once.
@@ -182,13 +250,13 @@ for type in simple python node; do
     "$(jq -r '."release-type"' "$work/$type/release-please-config.json")"
 done
 
-# The release caller pins the tag of infra, gives the job token no permission, and passes the
-# secret of the release App by name, never with `secrets: inherit`. The job of the reusable workflow
-# gets the value of the secret of the environment release.
+# The release caller calls the reusable release workflow of infra, gives the job token no
+# permission, and passes the secret of the release App by name, never with `secrets: inherit`. The
+# job of the reusable workflow gets the value of the secret of the environment release.
 expect "simple: the environment release" "release" \
   "$(yq -r '[.environments[].name] | join(" ")' "$work/simple/github/repository.yaml")"
-expect "simple: the pin of the reusable release workflow" \
-  "dan-petty/infra/.github/workflows/release.yml@$ref" "$(uses simple release.yml)"
+expect "simple: the reusable release workflow" \
+  "dan-petty/infra/.github/workflows/release.yml" "$(uses simple release.yml | sed 's/@.*//')"
 expect "simple: the permissions of the release caller" "{}" \
   "$(yq -o=json -I=0 '.jobs.release.permissions' "$work/simple/.github/workflows/release.yml")"
 # shellcheck disable=SC2016 # The expression of GitHub Actions, not of the shell.

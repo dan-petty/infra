@@ -10,7 +10,9 @@
 # - Renovate extracts the dependencies of a copy of the fixture with that config
 #   (`--platform=local --dry-run=extract` reads the files of the working tree, looks up no release
 #   and opens no pull request). The test checks that Renovate reads each pin of infra, at a release
-#   tag, with the datasource github-tags or git-tags, and the image of the Cluster.
+#   tag, with the datasource github-tags or git-tags, and the image of the Cluster. The
+#   github-actions manager reads the caller of a reusable workflow as a digest pin: the commit of the
+#   tag, with the tag in its comment, the form that the repository template renders.
 # - Renovate looks up the releases of each pin of infra (`--dry-run=lookup`). The extract does not
 #   apply the packageRules, so only the lookup proves a rule that changes the name that a lookup
 #   reads. The test checks that each lookup gets the repository https://github.com/dan-petty/infra
@@ -119,7 +121,8 @@ fi
 grep '^{' "$work/extract.log" | jq -c '
   select(.packageFiles) | .packageFiles | to_entries[] | .key as $manager | .value[]
   | .packageFile as $file | .deps[]
-  | {manager: $manager, file: $file, depName, packageName, datasource, currentValue, skipReason}' \
+  | {manager: $manager, file: $file, depName, packageName, datasource, depType, currentValue,
+     currentDigest, skipReason}' \
   >"$work/deps.jsonl"
 
 # check NAME FILTER TEST [FILE]: exactly one dependency of FILE (default: the deps of the extract)
@@ -155,6 +158,14 @@ expect terraform
 expect ansible-galaxy
 expect argocd
 expect github-actions
+
+# The github-actions manager reads a caller of a reusable workflow of infra as a digest pin: the
+# commit of the tag v0.1.0, with the tag in its comment. An update writes the same form, which is
+# the text that the repository template renders, so Renovate and `copier update` write one line.
+check "github-actions: the digest pin of the reusable workflow" \
+  ".manager == \"github-actions\" and ($infra)" \
+  '.depType == "workflow" and .currentValue == "v0.1.0"
+  and .currentDigest == "aacb6e4661513b20885ebd56f1f2edb89534d5cd"'
 
 # The CloudNativePG custom manager reads the image of spec.imageName of the Cluster, and not the
 # deeper imageName field of the Helm values.
