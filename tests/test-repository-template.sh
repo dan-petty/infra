@@ -12,16 +12,22 @@
 #   - check-jsonschema: github/repository.yaml with templates/github-repository.schema.json, and the
 #     release-please files with the schemas of the release-please release of RELEASE_PLEASE_VERSION,
 #   - the config validator of Renovate, in strict mode, on .github/renovate.json,
-#   - the answers in the files: the scope labels, the release type, the environment release, the
-#     secret that the release caller passes by name, and the code owner,
+#   - the answers in the files: the scope labels and their descriptions, the release type, the
+#     environment release, the secret that the release caller passes by name, the code owner, and
+#     the required checks: the title check of the template and each check of the answer
+#     required_checks,
 #   - the pin of each caller of a reusable workflow of infra: the commit that Copier renders, with
 #     the tag of infra (infra_ref, else _commit) in a comment, and no bare tag,
-#   - a render of a lightweight release tag: each caller pins the commit of the tag, and a
-#     `copier update` to the next tag gives no conflict when Renovate already moved the callers,
+#   - a render of a lightweight release tag: each caller pins the commit of the tag. Then the
+#     repository writes its own content into each file of _skip_if_exists, and the next tag changes
+#     each file of the template. `copier update` (as Renovate runs it) and `copier recopy
+#     --overwrite` (the re-adoption of a repository with changed template files) give no conflict,
+#     keep each file of _skip_if_exists, and give each other file the render of the next tag,
 #   - that a render of a template folder with no git fails with a message, and writes no `@None`,
 #   - that infra holds each workflow that a caller calls as a reusable workflow, with each secret
 #     that the release caller passes,
-#   - that Copier refuses a scope that is not a lowercase name.
+#   - that Copier refuses a scope that is not a lowercase name, a check name that is not plain, and a
+#     scope description of an unknown scope, or that is not a plain text of 1 to 100 characters.
 # Run it from the repository root after `uv sync --frozen`: `mise exec -- tests/test-repository-template.sh`.
 # npx installs the Renovate release of RENOVATE_VERSION with the Node of mise.toml, and runs no
 # install script of a package. check-jsonschema downloads the release-please schemas from GitHub.
@@ -137,6 +143,12 @@ labels() {
   yq -r '[.[].name] | join(" ")' "$work/$1/.github/labels.yml"
 }
 
+# required NAME: the required checks of the ruleset main of $work/NAME, separated by commas.
+required() {
+  yq -r '[.rulesets[0].rules[] | select(.type == "required_status_checks")
+    | .parameters.required_status_checks[].context] | join(",")' "$work/$1/github/repository.yaml"
+}
+
 # uses NAME WORKFLOW: the `uses` of each job of the workflow WORKFLOW of $work/NAME, on one line.
 uses() {
   yq -r '[.jobs[].uses] | join(" ")' "$work/$1/.github/workflows/$2"
@@ -179,6 +191,20 @@ expect "defaults: code_coverage is false in .copier-answers.yml" "false" \
 expect "defaults: no code_coverage rule" "0" \
   "$(yq -r '[.rulesets[0].rules[] | select(.type == "code_coverage")] | length' "$work/defaults/github/repository.yaml")"
 
+# The ruleset main requires the check of the title caller, which GitHub names "<job of the caller> /
+# <job of the reusable workflow>", and each check of the answer required_checks, once. Integration
+# 15368 is GitHub Actions: only a job of a workflow can report a required check.
+title_check="$(yq -r '.jobs[].name' "$work/defaults/.github/workflows/pr-title.yml") / $(
+  yq -r '.jobs[].name' "$root/.github/workflows/pr-title.yml")"
+expect "defaults: the required checks" "$title_check" "$(required defaults)"
+render checks "required_checks=K8s, Lint / yamllint,K8s"
+validate checks
+expect "checks: the required checks" "K8s,Lint / yamllint,$title_check" "$(required checks)"
+expect "checks: each required check comes from GitHub Actions" "15368" \
+  "$(yq -r '[.rulesets[0].rules[] | select(.type == "required_status_checks")
+    | .parameters.required_status_checks[].integration_id] | unique | join(",")' \
+    "$work/checks/github/repository.yaml")"
+
 # With code_coverage=true, the rendered ruleset holds the code_coverage rule with minimum_coverage: 80.
 render coverage code_coverage=true
 validate coverage
@@ -211,28 +237,83 @@ expect "tag: each caller pins the commit of the tag" \
   "uses: dan-petty/infra/.github/workflows/pr-title.yml@$first # v1.0.0
 uses: dan-petty/infra/.github/workflows/release.yml@$first # v1.0.0" "$(pins "$work/tag")"
 
-# The github-actions manager of Renovate moves the callers to the next tag before the copier
-# manager runs `copier update` (Renovate --skip-answered --defaults). Copier renders the same line,
-# so its 3-way merge gives no conflict, and the update leaves the callers as Renovate wrote them.
+# Each file has one owner. The files of $kept belong to the repository after the first copy
+# (_skip_if_exists of copier.yml): the repository writes its own rules into them, and release-please
+# writes the version files. The template owns each other file, also the callers of infra: Renovate
+# leaves their pins to the copier update. Here the repository of v1.0.0 writes its own content into
+# each file of $kept, and the release v1.1.0 changes each file of the template.
+kept='.devops/project.toml
+.github/renovate.json
+.pre-commit-config.yaml
+.release-please-manifest.json
+version.txt'
 gitq -C "$work/tag" init --quiet
 gitq -C "$work/tag" add --all
 gitq -C "$work/tag" commit --quiet -m "the render of v1.0.0"
-gitq -C "$src" commit --quiet --allow-empty -m "the next release"
+printf '[kubernetes]\ndir = "k8s"\n' >>"$work/tag/.devops/project.toml"
+jq '.packageRules = [{"matchPackageNames": ["example"], "enabled": false}]' \
+  "$work/tag/.github/renovate.json" >"$work/renovate.json"
+mv "$work/renovate.json" "$work/tag/.github/renovate.json"
+printf '  - repo: local\n    hooks: []\n' >>"$work/tag/.pre-commit-config.yaml"
+printf '{\n  ".": "1.4.0"\n}\n' >"$work/tag/.release-please-manifest.json"
+printf '1.4.0\n' >"$work/tag/version.txt"
+gitq -C "$work/tag" commit --quiet --all -m "the content of the repository"
+while read -r file; do
+  case "$file" in
+    *answers_file*) ;;
+    *.json | *.json.jinja) sed -i '1a\  "x-release": "v1.1.0",' "$src/templates/repository/$file" ;;
+    *) sed -i '1i # The release v1.1.0.' "$src/templates/repository/$file" ;;
+  esac
+done < <(files "$src/templates/repository")
+gitq -C "$src" commit --quiet --all -m "the next release"
 gitq -C "$src" tag v1.1.0
 next="$(git -C "$src" rev-parse 'v1.1.0^{commit}')"
-sed -i -E "s|(uses: dan-petty/infra/\.github/workflows/[a-z-]+\.yml)@.*\$|\1@$next # v1.1.0|" \
-  "$work/tag"/.github/workflows/*.yml
-gitq -C "$work/tag" commit --quiet --all -m "the update of Renovate to v1.1.0"
+check "next: copier copy" copier copy --quiet --defaults --vcs-ref v1.1.0 --data release_flow=true \
+  "$src" "$work/next"
+
+cp -R "$work/tag" "$work/update"
+cp -R "$work/tag" "$work/recopy"
+
+# A repository that re-adopts the template once: Renovate moved its callers to another release, and
+# a person changed files of the template. `copier recopy --overwrite` renders v1.1.0 over it.
+sed -i -E 's/@[0-9a-f]{40} # v1\.0\.0$/@0000000000000000000000000000000000000000 # v1.0.1/' \
+  "$work/recopy"/.github/workflows/*.yml
+printf '# An old comment.\n' >>"$work/recopy/.github/CODEOWNERS"
+printf -- '- name: "type/bug"\n  color: "D73A4A"\n' >>"$work/recopy/.github/labels.yml"
+gitq -C "$work/recopy" commit --quiet --all -m "the changes of a person and of Renovate"
+
+# conflicts DIR: each conflict marker and each rejected hunk (.rej) of DIR.
+conflicts() {
+  grep -rl --exclude-dir=.git -E '^(<<<<<<<|>>>>>>>)( |$)' "$1" || true
+  find "$1" -name '*.rej'
+}
+
+# owned DIR: each file of the template in DIR, outside $kept, that differs from $work/next.
+owned() {
+  local skip=()
+  while read -r file; do
+    skip+=(-x "$(basename "$file")")
+  done <<<"$kept"
+  diff -rq -x .git "${skip[@]}" "$work/next" "$1" || true
+}
+
+# The copier manager of Renovate runs `copier update --skip-answered --defaults`.
 check "update: copier update" copier update --quiet --skip-answered --defaults --vcs-ref v1.1.0 \
-  "$work/tag"
-expect "update: no conflict" "" \
-  "$(grep -rl --exclude-dir=.git -E '^(<<<<<<<|>>>>>>>)( |$)' "$work/tag" || true)"
-expect "update: the callers that Renovate moved stay the same" "" \
-  "$(git -C "$work/tag" status --porcelain --untracked-files=all -- .github/workflows)"
-expect "update: _commit" "v1.1.0" "$(yq -r '._commit' "$work/tag/.copier-answers.yml")"
-expect "update: each caller pins the commit of the next tag" \
-  "uses: dan-petty/infra/.github/workflows/pr-title.yml@$next # v1.1.0
-uses: dan-petty/infra/.github/workflows/release.yml@$next # v1.1.0" "$(pins "$work/tag")"
+  "$work/update"
+check "recopy: copier recopy" copier recopy --quiet --skip-answered --defaults --overwrite \
+  --vcs-ref v1.1.0 "$work/recopy"
+for name in update recopy; do
+  dir="$work/$name"
+  expect "$name: no conflict" "" "$(conflicts "$dir")"
+  # shellcheck disable=SC2086 # Each line of $kept is one path.
+  expect "$name: each file of the repository keeps its content" "" \
+    "$(git -C "$dir" status --porcelain --untracked-files=all -- $kept)"
+  expect "$name: each file of the template is the render of v1.1.0" "" "$(owned "$dir")"
+  expect "$name: _commit" "v1.1.0" "$(yq -r '._commit' "$dir/.copier-answers.yml")"
+  expect "$name: each caller pins the commit of the next tag" \
+    "uses: dan-petty/infra/.github/workflows/pr-title.yml@$next # v1.1.0
+uses: dan-petty/infra/.github/workflows/release.yml@$next # v1.1.0" "$(pins "$dir")"
+done
 
 # A template folder that is not a git repository gives Copier no commit (_copier_conf.vcs_ref_hash
 # is None). The render fails with a message, and writes no caller with `@None`.
@@ -250,6 +331,16 @@ elif ! grep -q 'Copier gives no commit of the template' "$work/plain.log"; then
 else
   echo "ok   copier refuses a template with no commit"
 fi
+
+# The answer scope_descriptions gives a scope label its own description, also a scope of the
+# template. Each other scope label gets the description of the template.
+render described "scopes=api,worker" \
+  'scope_descriptions={api: "The HTTP API in api/", ci: "Workflows: build, scan and publish"}'
+validate described
+expect "described: the descriptions of the scope labels" \
+  "Workflows: build, scan and publish|Dependency pins and the updates of Renovate|README and other documents|The HTTP API in api/|The area worker of this repository" \
+  "$(yq -r '[.[] | select(.name | test("^scope/")) | .description] | join("|")' \
+    "$work/described/.github/labels.yml")"
 
 # The release flow with each release type, and two scopes of the repository. A scope of the
 # template, here docs, comes once.
@@ -304,15 +395,19 @@ check "release workflow requests review on the release pull request" \
   yq -e '.jobs.release-please.steps[] | select(.name == "Request review on the release pull request")' \
   "$root/.github/workflows/release.yml"
 
-# Copier refuses a scope that is not a lowercase name, and the scope main of the release pull request.
-for scopes in "Bad Scope" "api,main"; do
+# Copier refuses a scope that is not a lowercase name, the scope main of the release pull request,
+# a check name that is not a plain YAML text, a description of a scope that the repository does not
+# have, and a description that is not a text of 1 to 100 characters with no quote or backslash.
+for data in "scopes=Bad Scope" "scopes=api,main" "required_checks=K8s: lint" \
+  "scope_descriptions={api: The API}" 'scope_descriptions={docs: "The \"docs\""}' \
+  "scope_descriptions={docs: ''}" "scope_descriptions=[docs]"; do
   cases=$((cases + 1))
-  if copier copy --quiet --defaults --vcs-ref HEAD --data "infra_ref=$ref" --data "scopes=$scopes" \
+  if copier copy --quiet --defaults --vcs-ref HEAD --data "infra_ref=$ref" --data "$data" \
     "$root" "$work/refused" >"$work/refused.log" 2>&1; then
-    echo "FAIL copier refuses scopes=$scopes"
+    echo "FAIL copier refuses $data"
     failures=$((failures + 1))
   else
-    echo "ok   copier refuses scopes=$scopes"
+    echo "ok   copier refuses $data"
   fi
   rm -rf "$work/refused"
 done

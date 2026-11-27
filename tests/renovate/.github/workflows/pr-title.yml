@@ -1,0 +1,20 @@
+# A fixture of tests/test-renovate-presets.sh: the caller of the PR title check, as the repository
+# template renders it. The copier update moves its pin, so Renovate leaves it alone. GitHub runs only
+# the workflows of the root .github/workflows/, so this file never runs.
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  pr-title:
+    name: PR title
+    uses: dan-petty/infra/.github/workflows/pr-title.yml@aacb6e4661513b20885ebd56f1f2edb89534d5cd # v0.1.0
+    permissions:
+      contents: read
+      pull-requests: read

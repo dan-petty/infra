@@ -4,8 +4,8 @@ name: PR Title
 # reusable workflow pr-title.yml of infra checks the title of each pull request into main. A scope
 # is one of the scope/* labels of .github/labels.yml, or main, the scope of the release pull request.
 # The caller pins the commit of the release tag of infra that rendered this file, with the tag in a
-# comment: the form of a digest pin of the github-actions manager of Renovate. `copier update`
-# changes both.
+# comment: the form of a digest pin of the github-actions manager of Renovate. Only `copier update`
+# changes both: Renovate leaves this pin to the template.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]

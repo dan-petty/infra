@@ -178,6 +178,19 @@
       "matchManagers": ["copier"],
       "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
       "commitMessageTopic": "dan-petty/infra template"
+    },
+    {
+      "description": "Each file has one owner (#225). The repository template of infra renders the callers .github/workflows/pr-title.yml and .github/workflows/release.yml with the commit of its release tag, and the copier update moves these pins with the other files of the template. So the github-actions manager leaves them alone: when Renovate also moves them, the copier update conflicts. A caller of infra in another file, such as one of k8s-validate.yml, still gets its updates.",
+      "matchManagers": ["github-actions"],
+      "matchFileNames": [".github/workflows/pr-title.yml", ".github/workflows/release.yml"],
+      "matchPackageNames": ["dan-petty/infra"],
+      "enabled": false
+    },
+    {
+      "description": "The copier update has one branch in each repository, with no split into major, minor and patch, so it always renders the newest release of the template (#225). Two copier branches change the same files and conflict.",
+      "matchManagers": ["copier"],
+      "separateMajorMinor": false,
+      "separateMinorPatch": false
     }
   ]
 }

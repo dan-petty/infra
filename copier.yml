@@ -5,11 +5,25 @@
 # answer: Copier renders it and removes the suffix. Copier copies each other file as it is. The
 # template has no _tasks and no _jinja_extensions, so Copier runs it without --trust. Copier writes
 # the answers into .copier-answers.yml, and the copier manager of Renovate updates the repository to
-# each new release tag of infra with `copier update`.
+# the newest release tag of infra with `copier update`. infra itself is the template source, not a
+# render of it, so it has no .copier-answers.yml.
 
 # Copier 9.2.0 matches each pattern of _exclude with the rendered path, with no suffix .jinja.
 _min_copier_version: "9.2.0"
 _subdirectory: templates/repository
+
+# Each file has one owner (#225). The template owns each file of templates/repository/:
+# `copier update` and `copier recopy` write it again from the answers, so a change of such a file
+# goes into the template or into an answer, not into the repository. The files of _skip_if_exists
+# belong to the repository after the first copy: its own Renovate rules, pre-commit hooks and
+# project profile, and the version files that release-please writes. Copier writes such a file only
+# when the repository does not hold it, also on `copier update` and `copier recopy --overwrite`.
+_skip_if_exists:
+  - .github/renovate.json
+  - .pre-commit-config.yaml
+  - .devops/project.toml
+  - version.txt
+  - .release-please-manifest.json
 
 # The files of the release flow. A repository with no release flow gets none of them, and
 # version.txt is the version file of the release type simple only.
@@ -60,6 +74,37 @@ code_owner:
     {% if not (code_owner | regex_search('^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$')) -%}
     The code owner is a GitHub user or team, such as @dan-petty.
     {% endif %}
+
+scope_descriptions:
+  type: yaml
+  help: >-
+    The description of a scope/* label, by scope, such as {api: "The HTTP API in api/"}. A scope of
+    the repository with no description gets "The area <scope> of this repository", and ci, deps and
+    docs get the description of the template. GitHub allows 100 characters.
+  default: {}
+  validator: >-
+    {% set known = ['ci', 'deps', 'docs'] + (scopes.split(',') | map('trim') | list) -%}
+    {% if scope_descriptions is not mapping -%}
+    The scope descriptions are a mapping of a scope to its description, such as {api: "The API"}.
+    {% else %}{% for scope, text in scope_descriptions.items() -%}
+    {% if scope not in known -%}
+    The scope "{{ scope }}" has a description, but it is not ci, deps, docs or a scope of scopes.
+    {% elif text is not string or not text or text | length > 100 or '"' in text or '\\' in text -%}
+    The description of the scope "{{ scope }}" is not a text of 1 to 100 characters with no " or \.
+    {% endif %}{% endfor %}{% endif %}
+
+required_checks:
+  type: str
+  help: >-
+    The checks of the workflows of the repository that each pull request into main must pass, with
+    the title check of the template, separated by commas, such as K8s,Lint. The ruleset main of
+    github/repository.yaml requires each of them from GitHub Actions.
+  default: ""
+  validator: >-
+    {% for check in required_checks.split(',') | map('trim') | reject('equalto', '') -%}
+    {% if not (check | regex_search('^[A-Za-z0-9][A-Za-z0-9 ._/()-]*$')) -%}
+    The check "{{ check }}" is not the name of a job, such as K8s or Lint / yamllint.
+    {% endif %}{% endfor %}
 
 code_coverage:
   type: bool
