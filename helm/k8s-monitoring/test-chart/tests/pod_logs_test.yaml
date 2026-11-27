@@ -1,0 +1,36 @@
+# The tests of the pod log collection that the values template ../../values.yaml sets.
+# scripts/k8s-validate.sh gives the template to the dependency k8s-monitoring with --values
+# (helm/README.md). The chart needs a cluster name and destinations, which ../ci/test-values.yaml
+# gives, as for the render.
+suite: The pod logs of the values template of k8s-monitoring
+release:
+  name: k8s-monitoring
+values:
+  - ../ci/test-values.yaml
+tests:
+  - it: reads a new pod log file from its first line, so a pod that ends in seconds keeps its lines
+    template: charts/k8s-monitoring/templates/alloy-config.yaml
+    documentSelector:
+      path: metadata.name
+      value: k8s-monitoring-alloy-logs
+    asserts:
+      - matchRegex:
+          path: data["config.alloy"]
+          pattern: 'loki\.source\.file "pod_logs" \{[^}]*tail_from_end = false'
+  # The alloy-operator makes the DaemonSet from this Alloy object.
+  - it: keeps the read positions on the node, so a restart resumes each file at its position
+    template: charts/k8s-monitoring/templates/alloy.yaml
+    documentSelector:
+      path: metadata.name
+      value: k8s-monitoring-alloy-logs
+    asserts:
+      - equal:
+          path: spec.alloy.storagePath
+          value: /var/lib/alloy
+      - contains:
+          path: spec.controller.volumes.extra
+          content:
+            name: alloy-storage
+            hostPath:
+              path: /var/lib/alloy
+              type: DirectoryOrCreate
