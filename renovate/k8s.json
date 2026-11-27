@@ -41,7 +41,8 @@
       "overridePackageName": "dan-petty/infra"
     },
     {
-      "description": "Each pin of dan-petty/infra (a Kustomize remote, an OpenTofu module, an Ansible collection, an Argo CD source and a reusable workflow) moves to a new release tag in one pull request.",
+      "description": "Each pin of dan-petty/infra (a Kustomize remote, an OpenTofu module, an Ansible collection, an Argo CD source and a reusable workflow) moves to a new release tag in one pull request. The copier update of the repository template keeps its own branch: copier update runs only on a clean branch, and in this group the other managers change files first (#216).",
+      "matchManagers": ["!copier"],
       "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
       "groupName": "infra"
     }
