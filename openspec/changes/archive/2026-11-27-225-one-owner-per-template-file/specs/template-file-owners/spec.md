@@ -1,6 +1,6 @@
 ## Purpose
 
-The owner of each file of the repository template of infra, so that `copier update` and `copier recopy` give no conflict and keep the content of the repository, and the required checks that a repository holds as an answer.
+The owner of each file of the repository template of infra, so that `copier update` and `copier recopy` give no conflict and keep the content of the repository, and the scope descriptions and the required checks that a repository holds as answers.
 
 ## ADDED Requirements
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The form of each caller of a reusable workflow of infra that the repository template renders: a supply-chain check accepts it, and the copier manager and the github-actions manager of Renovate write the same line.
+The form of each caller of a reusable workflow of infra that the repository template renders: a supply-chain check accepts it, and only the copier update of the template writes it.
 
 ## Requirements
 
@@ -24,10 +24,3 @@ Each caller of a reusable workflow of infra that the repository template renders
 #### Scenario: A supply-chain check of the render
 - **WHEN** `.venv/bin/zizmor --offline` checks the workflows of a render of a release tag
 - **THEN** it reports no `unpinned-uses` finding
-
-### Requirement: Renovate and copier update write the same caller
-A `copier update` to a tag SHALL leave each caller that the github-actions manager of Renovate already moved to the same tag as it is, with no conflict marker.
-
-#### Scenario: Renovate moved the callers before the copier update
-- **WHEN** the callers of a render of `v1.0.0` hold `@<commit of v1.1.0> # v1.1.0`, and `copier update --skip-answered --defaults --vcs-ref v1.1.0` runs
-- **THEN** `mise exec -- tests/test-repository-template.sh` finds no conflict marker, and no change in `.github/workflows/`
