@@ -44,7 +44,6 @@ jobs:
       actions: ${{ steps.filter.outputs.actions }}
       shell: ${{ steps.filter.outputs.shell }}
       renovate: ${{ steps.filter.outputs.renovate }}
-      template: ${{ steps.filter.outputs.template }}
 
     steps:
       # A pull request gives its files through the API. A push compares the commits with git.
@@ -70,12 +69,7 @@ jobs:
               - uv.lock
             k8s:
               - *tools
-              - .github/workflows/k8s-validate.yml
-              - .kube-linter.yaml
               - helm/.kubelinterignore.yaml
-              - scripts/k8s-validate.sh
-              - tests/test-k8s-validate.sh
-              - tests/test-kube-linter-config.sh
               - tests/test-service-repos.sh
               - version.txt
               - k8s/**
@@ -99,8 +93,6 @@ jobs:
               - *tools
               - .github/workflows/**
               - .github/actionlint.yaml
-              - scripts/pr-title-scopes.sh
-              - tests/test-pr-title-scopes.sh
               - tests/test-ci-check-names.sh
             shell:
               - *tools
@@ -111,14 +103,6 @@ jobs:
               - renovate/**
               - tests/renovate/**
               - tests/test-renovate-presets.sh
-            template:
-              - *python
-              - .github/workflows/pr-title.yml
-              - .github/workflows/release.yml
-              - .yamllint.yaml
-              - copier.yml
-              - templates/**
-              - tests/test-repository-template.sh
 
   private-data:
     name: Private-data guard
@@ -157,8 +141,13 @@ jobs:
           PRIVATE_DOMAINS: ${{ secrets.PRIVATE_DOMAINS }}
         run: mise exec -- scripts/private-data-scan.sh dir .
 
-  # GitHub names the check of this job "K8s run / Validate" when it runs, and "K8s run" when it is
-  # skipped, so a ruleset requires the job k8s below, not this one.
+  # The reusable workflow k8s-validate.yml of dan-petty/github-workflows checks the Kubernetes
+  # templates of infra, as it checks those of each other repository: kustomize build and helm template
+  # into kubeconform, kube-linter with its shared config, trivy config, helm lint, helm unittest and
+  # promtool (README.md, "Checks"). It installs the tools of the mise.lock of its own commit. Renovate
+  # moves the pin (README.md, "Pin a release"). GitHub names the check of this job "K8s run / Validate"
+  # when it runs, and "K8s run" when it is skipped, so a ruleset requires the job k8s below, not this
+  # one.
   k8s-validate:
     name: K8s run
     needs: changes
@@ -166,7 +155,9 @@ jobs:
       !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
     permissions:
       contents: read
-    uses: ./.github/workflows/k8s-validate.yml
+    # The pin of the commit and its tag comment must stay on one line, where Renovate reads them.
+    # yamllint disable-line rule:line-length
+    uses: dan-petty/github-workflows/.github/workflows/k8s-validate.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
     with:
       kustomize-roots: |
         k8s/tests/example
@@ -233,37 +224,6 @@ jobs:
             esac
           done
 
-  k8s-config:
-    name: kube-linter config
-    needs: changes
-    if: >-
-      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.k8s == 'true')
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install mise
-        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-        with:
-          version: "2026.11.14"
-          install: false
-          cache: false
-
-      - name: Install kube-linter
-        timeout-minutes: 3
-        run: mise install --locked kube-linter
-
-      - name: Test the custom checks of .kube-linter.yaml
-        timeout-minutes: 3
-        run: mise exec -- tests/test-kube-linter-config.sh
-
   k8s-templates:
     name: K8s templates
     needs: changes
@@ -287,22 +247,15 @@ jobs:
           install: false
           cache: false
 
-      - name: Install kustomize, yq, helm, kubeconform, trivy and kube-linter
+      - name: Install kustomize, yq, helm and kubeconform
         timeout-minutes: 3
-        run: mise install --locked kustomize yq helm kubeconform trivy kube-linter
+        run: mise install --locked kustomize yq helm kubeconform
 
       # The test renders the test overlay and the Application templates of the ApplicationSets for
       # each test services entry, and checks them (tests/test-service-repos.sh).
       - name: Test the base service-repos
         timeout-minutes: 3
         run: mise exec -- tests/test-service-repos.sh
-
-      # The test runs the steps of scripts/k8s-validate.sh on fixtures: the render of a test chart
-      # and of each object to its own file, the schema of a CRD, and the scope of each entry of
-      # helm/.trivyignore.yaml and helm/.kubelinterignore.yaml (tests/test-k8s-validate.sh).
-      - name: Test scripts/k8s-validate.sh
-        timeout-minutes: 5
-        run: mise exec -- tests/test-k8s-validate.sh
 
   tofu:
     name: OpenTofu
@@ -463,7 +416,7 @@ jobs:
 
       # zizmor checks the workflows: each action pinned to a commit SHA, no job with more
       # permissions than it needs and no `secrets: inherit`. The audits run offline, so the result
-      # does not change with the GitHub API. .github/zizmor.yml holds the settings.
+      # does not change with the GitHub API.
       - name: Run zizmor
         timeout-minutes: 2
         run: zizmor --offline .github/workflows/
@@ -499,12 +452,6 @@ jobs:
       - name: Run actionlint
         timeout-minutes: 2
         run: mise exec -- actionlint
-
-      # The script gives the reusable workflow pr-title.yml the scopes of every repository and of the
-      # labels file of the caller (tests/test-pr-title-scopes.sh).
-      - name: Test scripts/pr-title-scopes.sh
-        timeout-minutes: 2
-        run: mise exec -- tests/test-pr-title-scopes.sh
 
       - name: Test the check names of ci.yml
         timeout-minutes: 2
@@ -575,43 +522,3 @@ jobs:
         env:
           RENOVATE_GITHUB_COM_TOKEN: ${{ github.token }}
         run: mise exec -- tests/test-renovate-presets.sh
-
-  template:
-    name: Repository template
-    needs: changes
-    if: >-
-      !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.template == 'true')
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install mise
-        uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-        with:
-          version: "2026.11.14"
-          install: false
-          cache: false
-
-      - name: Install uv, Node, actionlint, shellcheck, jq and yq
-        timeout-minutes: 3
-        run: mise install --locked uv node actionlint shellcheck jq yq
-
-      - name: Install the Python tools of uv.lock
-        timeout-minutes: 5
-        run: mise exec -- uv sync --frozen
-
-      # The test renders the template with each answer set and checks the files with actionlint,
-      # yamllint, tomllib, pre-commit, check-jsonschema and the config validator of Renovate
-      # (tests/test-repository-template.sh). It also checks that infra holds each reusable workflow
-      # that a rendered caller calls. npx installs the Renovate release of the test, and
-      # check-jsonschema downloads the release-please schemas of the test.
-      - name: Render and check the template with each answer set
-        timeout-minutes: 6
-        run: mise exec -- tests/test-repository-template.sh

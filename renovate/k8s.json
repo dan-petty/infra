@@ -41,7 +41,7 @@
       "overridePackageName": "dan-petty/infra"
     },
     {
-      "description": "Each pin of dan-petty/infra (a Kustomize remote, an OpenTofu module, an Ansible collection, an Argo CD source and a reusable workflow) moves to a new release tag in one pull request. The copier update of the repository template keeps its own branch: copier update runs only on a clean branch, and in this group the other managers change files first (#216).",
+      "description": "Each pin of dan-petty/infra (a Kustomize remote, an OpenTofu module, an Ansible collection and an Argo CD source) moves to a new release tag in one pull request. A copier update keeps its own branch: copier update runs only on a clean branch, and in this group the other managers change files first (#216). A caller of a reusable workflow names dan-petty/github-workflows and gets no group: Renovate puts each pin of one dependency at one new release into one branch.",
       "matchManagers": ["!copier"],
       "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
       "groupName": "infra"

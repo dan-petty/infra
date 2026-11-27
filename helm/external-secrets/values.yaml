@@ -1,8 +1,8 @@
 # The values template of the upstream chart external-secrets: External Secrets Operator (ESO) with
 # its CRDs (devops-cli ADR 0033). It holds only the settings that are true for each cluster. The
 # consumer gives this file to the chart, then its own values (README.md of this folder). The
-# requests, limits, probes and rolling updates are the checks of kube-linter (.kube-linter.yaml):
-# a consumer sets its own requests and limits.
+# requests, limits, probes and rolling updates are the checks of kube-linter (the shared
+# .kube-linter.yaml of dan-petty/github-workflows): a consumer sets its own requests and limits.
 #
 # Helm merges maps and replaces lists. Thus a consumer that sets extraObjects also gives the
 # NetworkPolicies of this file again.

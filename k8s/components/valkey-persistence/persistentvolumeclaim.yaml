@@ -1,6 +1,6 @@
 # Argo CD never prunes or deletes this claim and the data on its volume (the kube-linter check
-# pvc-prune-protection of .kube-linter.yaml). The claim has no storage class, so the default
-# storage class of the cluster gives the volume.
+# pvc-prune-protection of the shared .kube-linter.yaml of dan-petty/github-workflows). The claim has
+# no storage class, so the default storage class of the cluster gives the volume.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

@@ -1,4 +1,4 @@
-# The tests of the values template ../../values.yaml. scripts/k8s-validate.sh gives the template to
+# The tests of the values template ../../values.yaml. k8s-validate.yml gives the template to
 # the dependency external-secrets with --values (helm/README.md).
 suite: The values template of external-secrets
 templates:

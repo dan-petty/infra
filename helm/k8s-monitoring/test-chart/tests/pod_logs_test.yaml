@@ -1,5 +1,5 @@
 # The tests of the pod log collection that the values template ../../values.yaml sets.
-# scripts/k8s-validate.sh gives the template to the dependency k8s-monitoring with --values
+# k8s-validate.yml gives the template to the dependency k8s-monitoring with --values
 # (helm/README.md). The chart needs a cluster name and destinations, which ../ci/test-values.yaml
 # gives, as for the render.
 suite: The pod logs of the values template of k8s-monitoring

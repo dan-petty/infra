@@ -137,7 +137,7 @@
 
 - name: "scope/templates"
   color: "DCDCD6"
-  description: "Copier templates of a new repository"
+  description: "The shared templates of infra and their checks"
 
 - name: "scope/tools"
   color: "DCDCD6"
