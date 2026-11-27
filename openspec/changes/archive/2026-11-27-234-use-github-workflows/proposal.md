@@ -1,7 +1,7 @@
 # Proposal: call the workflows of dan-petty/github-workflows
 
 ## Why
-Each onboarded repository pins dan-petty/infra two times, for the reusable workflows and for the Copier template, and each release of infra opens a pin pull request in each repository, also when no workflow and no template file changed (#217). The workflows and the template moved to the new public repository dan-petty/github-workflows, which releases only when they change (its release `v0.1.0`, dan-petty/github-workflows#3). infra still holds the old copies, calls its own copies, and its Renovate presets name only infra.
+#234 is step 4 of #217, the part of infra. Each onboarded repository pins dan-petty/infra two times, for the reusable workflows and for the Copier template, and each release of infra opens a pin pull request in each repository, also when no workflow and no template file changed (#217). The workflows and the template moved to the new public repository dan-petty/github-workflows, which releases only when they change (its release `v0.1.0`, dan-petty/github-workflows#3). infra still holds the old copies, calls its own copies, and its Renovate presets name only infra.
 
 Owner, 2026-11-27: "standardize templates and workflows where possible" and "don't build custom solutions where standard conventions already cover the use cases".
 
