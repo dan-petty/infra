@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/dan-petty/infra/compare/v0.25.0...v0.25.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **templates:** pin the infra workflow callers to a commit SHA ([#215](https://github.com/dan-petty/infra/issues/215)) ([b8b8340](https://github.com/dan-petty/infra/commit/b8b8340dbc3e88960b316872a23f7b6bed987b0b))
+
 ## [0.25.0](https://github.com/dan-petty/infra/compare/v0.24.3...v0.25.0) (2026-11-27)
 
 
