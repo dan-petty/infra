@@ -14,7 +14,8 @@
   when: common_default_target is defined
 
 # The display manager is the alias display-manager.service of the unit of the installed display
-# manager. A host with no display manager has no such unit, so the stop skips it.
+# manager. On a host with no display manager, service_facts gives no such key, or the status
+# not-found when graphical.target wants the unit. The stop skips both.
 - name: Read the services of the host
   ansible.builtin.service_facts:
   when:
@@ -30,4 +31,4 @@
   when:
     - common_default_target | default('') == 'multi-user.target'
     - common_display_manager_stop | bool
-    - "'display-manager.service' in ansible_facts.services | default({})"
+    - (ansible_facts.services | default({}))['display-manager.service'].status | default('not-found') != 'not-found'

@@ -26,7 +26,7 @@ The role `common` SHALL link `common_default_target_link` to `/usr/lib/systemd/s
 - **THEN** the link task reports a change, and the link still points at `/usr/lib/systemd/system/graphical.target`
 
 ### Requirement: The role stops the display manager only when the host asks for it
-The role `common` SHALL stop `display-manager.service` only when `common_display_manager_stop` is true, `common_default_target` is `multi-user.target` and `ansible.builtin.service_facts` lists the unit. The role SHALL keep the unit enabled.
+The role `common` SHALL stop `display-manager.service` only when `common_display_manager_stop` is true, `common_default_target` is `multi-user.target` and `ansible.builtin.service_facts` lists the unit with a status other than `not-found`. The role SHALL keep the unit enabled.
 
 #### Scenario: No stop asked
 - **WHEN** the test play runs the tasks `default_target` with `multi-user.target` and the default `common_display_manager_stop`
