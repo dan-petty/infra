@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.25.0](https://github.com/dan-petty/infra/compare/v0.24.3...v0.25.0) (2026-11-27)
+
+
+### Features
+
+* add a runs-on input to k8s-validate and pr-title ([#209](https://github.com/dan-petty/infra/issues/209)) ([bccb3d8](https://github.com/dan-petty/infra/commit/bccb3d8517ff876be70dc629f46ac9da154e622a))
+* **ansible:** set the headless default target in common ([#211](https://github.com/dan-petty/infra/issues/211)) ([98fbb16](https://github.com/dan-petty/infra/commit/98fbb161cab204c825c650575525663c9c2e0083))
+
+
+### Bug Fixes
+
+* **ansible:** drop k3s pod IPv6 multicast on cni0 with no log ([#212](https://github.com/dan-petty/infra/issues/212)) ([c597c74](https://github.com/dan-petty/infra/commit/c597c747f239793c80f13bef1158a253d0235e23))
+
 ## [0.24.3](https://github.com/dan-petty/infra/compare/v0.24.2...v0.24.3) (2026-11-26)
 
 
