@@ -13,6 +13,9 @@ name: K8s Validate
 #         kustomize-roots: |
 #           k8s/overlays/example
 #
+# The job runs on the runner label of the input runs-on, so a caller can select its own runner. Empty
+# selects the GitHub-hosted runner ubuntu-26.04 (README.md, "Call the reusable workflows").
+#
 # The job checks out the repository of the caller, and the infra commit of this workflow
 # (job.workflow_sha) into .infra-workflow. It installs the tools of the mise.toml and mise.lock of
 # that commit, so each caller runs the tools at the versions of its infra tag. Each check step runs
@@ -24,6 +27,12 @@ name: K8s Validate
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          The runner label of the job, such as the name of a runner scale set of the caller. Empty
+          selects the GitHub-hosted runner ubuntu-26.04.
+        type: string
+        default: ""
       kustomize-roots:
         description: The Kustomize folders to build, one on each line, relative to the repository root.
         type: string
@@ -66,7 +75,7 @@ env:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-26.04
+    runs-on: ${{ inputs.runs-on || 'ubuntu-26.04' }}
     timeout-minutes: 20
     permissions:
       contents: read

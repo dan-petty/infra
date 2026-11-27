@@ -31,11 +31,21 @@ name: PR Title
 #         contents: read
 #         pull-requests: read
 #
+# The job runs on the runner label of the input runs-on, so a caller can select its own runner. Empty
+# selects the GitHub-hosted runner ubuntu-26.04 (README.md, "Call the reusable workflows").
+#
 # The job checks out the labels file of the caller, and the infra commit of this workflow
 # (job.workflow_sha) into .infra-workflow. It installs the yq of the mise.toml and mise.lock of that
 # commit, and scripts/pr-title-scopes.sh of that commit reads the scopes.
 on:
   workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          The runner label of the job, such as the name of a runner scale set of the caller. Empty
+          selects the GitHub-hosted runner ubuntu-26.04.
+        type: string
+        default: ""
 
 permissions: {}
 
@@ -47,7 +57,7 @@ env:
 jobs:
   semantic-title:
     name: Semantic PR title
-    runs-on: ubuntu-26.04
+    runs-on: ${{ inputs.runs-on || 'ubuntu-26.04' }}
     timeout-minutes: 10
     permissions:
       contents: read # Check out the labels file of the repository.
