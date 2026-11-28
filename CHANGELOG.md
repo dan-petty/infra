@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/dan-petty/infra/compare/v0.26.1...v0.27.0) (2026-11-28)
+
+
+### Features
+
+* call the workflows of github-workflows ([#235](https://github.com/dan-petty/infra/issues/235)) ([f1067fd](https://github.com/dan-petty/infra/commit/f1067fd4675aa75bea5fb30303e63ba7e82b51b1)), closes [#217](https://github.com/dan-petty/infra/issues/217) [#234](https://github.com/dan-petty/infra/issues/234)
+
 ## [0.26.1](https://github.com/dan-petty/infra/compare/v0.26.0...v0.26.1) (2026-11-27)
 
 
