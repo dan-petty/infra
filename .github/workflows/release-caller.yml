@@ -16,7 +16,7 @@ permissions: {}
 jobs:
   release:
     name: Release
-    uses: dan-petty/github-workflows/.github/workflows/release.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
+    uses: dan-petty/github-workflows/.github/workflows/release.yml@7b87b8c4e7a638fa1f3cd69903e720fdd487728a # v0.2.0
     permissions: {}
     # The job of release.yml runs in the environment release, so it gets the value of the secret of
     # that environment.

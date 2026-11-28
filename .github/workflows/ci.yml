@@ -157,7 +157,7 @@ jobs:
       contents: read
     # The pin of the commit and its tag comment must stay on one line, where Renovate reads them.
     # yamllint disable-line rule:line-length
-    uses: dan-petty/github-workflows/.github/workflows/k8s-validate.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
+    uses: dan-petty/github-workflows/.github/workflows/k8s-validate.yml@7b87b8c4e7a638fa1f3cd69903e720fdd487728a # v0.2.0
     with:
       kustomize-roots: |
         k8s/tests/example
