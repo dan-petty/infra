@@ -17,12 +17,12 @@ misconfigurations:
     expired_at: 2027-02-20
   # A false finding: the GKE module sets workload_metadata_config.mode to GKE_METADATA in a dynamic
   # block of node_config, and trivy 0.76.2 does not expand a dynamic block in node_config. The same
-  # value in a static block passes the check. On 2026-11-25 trivy 0.76.2 was still the newest
-  # release, so the entry has 3 more days (#149).
+  # value in a static block passes the check. On 2026-11-28 trivy 0.76.2 was still the newest
+  # release, so the entry has 3 more days (#251).
   - id: GCP-0057
     paths:
       - terraform-google-modules/kubernetes-engine/google/cluster.tf
     statement: >-
       False finding: trivy does not expand the dynamic workload_metadata_config block of the GKE
-      module, which sets mode GKE_METADATA (dan-petty/infra#149)
-    expired_at: 2026-11-28
+      module, which sets mode GKE_METADATA (dan-petty/infra#251)
+    expired_at: 2026-12-01
