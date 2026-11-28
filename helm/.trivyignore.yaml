@@ -3,9 +3,9 @@
 # upstream chart of helm/ can get a judgment here. infra fixes each finding of its own templates.
 #
 # The render step writes each object to its own file <n>-helm-<release>/<kind>-<name>.yaml
-# (scripts/k8s-validate.sh), so each entry names one finding ID on one object of one release. Each
-# entry has a reason and an expiry date. After the date, the scan reports the finding again, and a
-# person checks the judgment again.
+# (k8s-validate.yml of dan-petty/github-workflows), so each entry names one finding ID on one object
+# of one release. Each entry has a reason and an expiry date. After the date, the scan reports the
+# finding again, and a person checks the judgment again.
 misconfigurations:
   # The controller of External Secrets Operator writes the Secret of each ExternalSecret in each
   # namespace, so its ClusterRole manages Secrets in each namespace. No value of the chart removes

@@ -1,0 +1,20 @@
+# A fixture of tests/test-renovate-presets.sh: a consumer that still calls the reusable workflow of
+# infra at the commit of a release tag, with the tag in a comment. The workflows left infra for
+# dan-petty/github-workflows (#217), and a newer release of infra has no workflow, so Renovate
+# leaves this pin alone. GitHub runs only the workflows of the root .github/workflows/, so this
+# file never runs.
+name: K8s
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  k8s:
+    uses: dan-petty/infra/.github/workflows/k8s-validate.yml@aacb6e4661513b20885ebd56f1f2edb89534d5cd # v0.1.0
+    permissions:
+      contents: read
+    with:
+      kustomize-roots: |
+        k8s/tests/example

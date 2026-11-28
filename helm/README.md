@@ -12,8 +12,10 @@ Take the dependency from the OCI repository of the chart when it has one: `helm 
 of Helm 4 refuses an HTTP repository that `helm repo add` did not add. `helm lint --strict` needs a
 `values.yaml` and a `templates/` folder in the test chart.
 
-The K8s job of CI lints, renders and checks the test chart (README.md, "Checks").
-`scripts/k8s-validate.sh` knows a test chart by its folder name `test-chart`. It puts the values
+The K8s job of CI lints, renders and checks the test chart with the reusable workflow
+`k8s-validate.yml` of [dan-petty/github-workflows](https://github.com/dan-petty/github-workflows)
+(README.md, "Checks"). Its script `scripts/k8s-validate.sh` knows a test chart by its folder name
+`test-chart`. It puts the values
 template `../values.yaml` under the name of the dependency with yq, as Helm gives values to a
 dependency, and gives that file to `helm lint`, `helm template` and `helm unittest`. The release has
 the name of the dependency, so the objects have the names of an install with that release name.
@@ -55,8 +57,9 @@ template again.
 `.trivyignore.yaml` holds the written judgments of the trivy config scan of the K8s renders. Each
 entry names one finding ID on the file of one object of one release, with a reason and an expiry
 date. Only the owner accepts a CRITICAL finding. The K8s job of CI gives the file to the input
-`trivy-ignorefile` of `k8s-validate.yml`, and `tests/test-k8s-validate.sh` checks that each entry
-admits only its finding on its object.
+`trivy-ignorefile` of `k8s-validate.yml`. trivy admits each entry only for its finding on the files
+of its `paths`, and the test of `k8s-validate.sh` in dan-petty/github-workflows checks that each
+entry admits only its finding on its object.
 
 | Finding | Object | Expiry |
 | --- | --- | --- |
@@ -92,8 +95,9 @@ admits only its finding on its object.
 
 `.kubelinterignore.yaml` holds the written judgments of the kube-linter scan of the K8s renders. Each
 entry names one check on the file of one object of one release, with a reason and an expiry
-date. The K8s job of CI gives the file to the input `kube-linter-ignorefile` of `k8s-validate.yml`,
-and `tests/test-k8s-validate.sh` checks that each entry admits only its finding on its object.
+date. The K8s job of CI gives the file to the input `kube-linter-ignorefile` of `k8s-validate.yml`.
+The test of `k8s-validate.sh` in dan-petty/github-workflows checks that each entry admits only its
+finding on its object.
 
 | Check | Object | Expiry |
 | --- | --- | --- |

@@ -1,5 +1,5 @@
 # Argo CD never prunes or deletes this claim and the data on its volume (the kube-linter check
-# pvc-prune-protection of .kube-linter.yaml).
+# pvc-prune-protection of the shared .kube-linter.yaml of dan-petty/github-workflows).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

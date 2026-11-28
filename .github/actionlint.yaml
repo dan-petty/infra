@@ -1,16 +1,5 @@
-# actionlint settings. actionlint 1.7.12, the newest release, does not know two documented features
-# of GitHub Actions. Remove each entry when a release of actionlint knows the feature.
+# actionlint settings. actionlint 1.7.12, the newest release, does not know the GitHub-hosted runner
+# ubuntu-26.04 (rhysd/actionlint#723). Remove the entry when a release of actionlint knows it.
 self-hosted-runner:
-  # The GitHub-hosted runner ubuntu-26.04 (rhysd/actionlint#723).
   labels:
     - ubuntu-26.04
-paths:
-  # The properties workflow_repository and workflow_sha of the job context, which give a reusable
-  # workflow its own commit (rhysd/actionlint#707). Only this message is ignored, and only in the
-  # reusable workflows that check out their own commit.
-  .github/workflows/k8s-validate.yml:
-    ignore:
-      - 'property "workflow_(repository|sha)" is not defined in object type \{check_run_id: number;'
-  .github/workflows/pr-title.yml:
-    ignore:
-      - 'property "workflow_(repository|sha)" is not defined in object type \{check_run_id: number;'

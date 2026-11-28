@@ -1,10 +1,11 @@
 name: Release
 
 # The releases of infra (README.md, "Releases"). On each push to main, the job calls the reusable
-# workflow release.yml of the same commit, as each other repository calls it at the commit of a
-# release tag. Thus each release of infra also tests the workflow. The release pull request holds
-# the next version in version.txt, .release-please-manifest.json and ansible/galaxy.yml, and the
-# next tag in k8s/bases/service-repos/applicationsets.yaml (release-please-config.json).
+# workflow release.yml of dan-petty/github-workflows at the commit of a release tag, as each other
+# repository calls it, and Renovate moves the pin (README.md, "Pin a release"). The release pull
+# request holds the next version in version.txt, .release-please-manifest.json and
+# ansible/galaxy.yml, and the next tag in k8s/bases/service-repos/applicationsets.yaml
+# (release-please-config.json).
 on:
   push:
     branches:
@@ -15,7 +16,7 @@ permissions: {}
 jobs:
   release:
     name: Release
-    uses: ./.github/workflows/release.yml
+    uses: dan-petty/github-workflows/.github/workflows/release.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
     permissions: {}
     # The job of release.yml runs in the environment release, so it gets the value of the secret of
     # that environment.

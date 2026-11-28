@@ -1,0 +1,11 @@
+# A fixture of tests/test-renovate-presets.sh: a render of the repository template of infra at
+# v0.24.1, which a consumer holds until its recopy from dan-petty/github-workflows. The template
+# left infra (#217), and a newer release of infra has no template, so Renovate leaves this pin
+# alone. The copier manager reads each .copier-answers.*.yml file, the answers file of a second
+# template.
+_commit: v0.24.1
+_src_path: https://github.com/dan-petty/infra.git
+code_coverage: false
+code_owner: '@dan-petty'
+release_flow: false
+scopes: ''

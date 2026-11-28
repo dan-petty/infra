@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests of the base k8s/bases/service-repos (docs/service-repos.md) with its test overlay
 # k8s/tests/service-repos. Run it with `mise exec -- tests/test-service-repos.sh`. It runs kustomize,
-# yq, helm and, through scripts/k8s-validate.sh, kubeconform.
+# yq, helm and kubeconform.
 #
 # The first checks read the fields of the rendered overlay. The next checks render the Application
 # templates of the two ApplicationSets for each services entry of k8s/tests/service-repos/services/.
@@ -314,7 +314,11 @@ for bad in '[{"patch": "x"}]' '[{"path": "patch.yaml", "target": {"kind": "Confi
   fi
 done
 
-if RENDERED="$work/applications" "$root/scripts/k8s-validate.sh" kubeconform; then
+# kubeconform reads the schema of the CRD Application from the CRDs catalog of datreeio, as the
+# kubeconform step of k8s-validate.yml of dan-petty/github-workflows does.
+crd_schemas='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+if kubeconform -strict -summary -schema-location default -schema-location "$crd_schemas" \
+  "$work/applications"; then
   pass "kubeconform accepts each generated Application"
 else
   fail "kubeconform accepts each generated Application"

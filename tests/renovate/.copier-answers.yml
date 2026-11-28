@@ -1,9 +1,10 @@
-# A fixture of tests/test-renovate-presets.sh: a render of the repository template at v0.24.1. infra
-# has a newer patch release (v0.24.3) and a newer minor release of v0.24.1, so the copier update
-# shows if Renovate splits them.
-_commit: v0.24.1
-_src_path: https://github.com/dan-petty/infra.git
+# A fixture of tests/test-renovate-presets.sh: a render of the repository template of
+# dan-petty/github-workflows at v0.1.0.
+_commit: v0.1.0
+_src_path: https://github.com/dan-petty/github-workflows.git
 code_coverage: false
 code_owner: '@dan-petty'
 release_flow: false
+required_checks: ''
+scope_descriptions: {}
 scopes: ''

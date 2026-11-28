@@ -1,7 +1,7 @@
-# A fixture of tests/test-renovate-presets.sh: a consumer calls the reusable workflow of infra at the
-# commit of a release tag, with the tag in a comment (README.md, "Pin a release"). The
-# github-actions manager of Renovate must read the pin as a digest pin of the tag. GitHub runs only
-# the workflows of the root .github/workflows/, so this file never runs.
+# A fixture of tests/test-renovate-presets.sh: a consumer calls the reusable workflow of
+# dan-petty/github-workflows at the commit of a release tag, with the tag in a comment (README.md,
+# "Pin a release"). The github-actions manager of Renovate must read the pin as a digest pin of the
+# tag. GitHub runs only the workflows of the root .github/workflows/, so this file never runs.
 name: K8s
 
 on:
@@ -11,7 +11,9 @@ permissions: {}
 
 jobs:
   k8s:
-    uses: dan-petty/infra/.github/workflows/k8s-validate.yml@aacb6e4661513b20885ebd56f1f2edb89534d5cd # v0.1.0
+    # The pin of the commit and its tag comment must stay on one line, where Renovate reads them.
+    # yamllint disable-line rule:line-length
+    uses: dan-petty/github-workflows/.github/workflows/k8s-validate.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
     permissions:
       contents: read
     with:

@@ -169,21 +169,32 @@
       "pinDigests": false
     },
     {
-      "description": "Each manager names infra in its own form: dan-petty/infra (a workflow), github.com/dan-petty/infra, https://github.com/dan-petty/infra or https://github.com/dan-petty/infra.git (a remote, a source, the copier template). The title takes the name, so each form gets the one name dan-petty/infra and the title stays within 60 characters. The rule changes only the title: the lookups still read the name of the manager.",
+      "description": "Each manager names infra in its own form: dan-petty/infra, github.com/dan-petty/infra, https://github.com/dan-petty/infra or https://github.com/dan-petty/infra.git (a Kustomize remote, an OpenTofu module, an Ansible collection, an Argo CD source). The title takes the name, so each form gets the one name dan-petty/infra and the title stays within 60 characters. The rule changes only the title: the lookups still read the name of the manager.",
       "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
       "commitMessageTopic": "dan-petty/infra"
     },
     {
-      "description": "The copier update of the repository template gets its own title, so that it differs from the update of the other pins of infra of the same release.",
-      "matchManagers": ["copier"],
-      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
-      "commitMessageTopic": "dan-petty/infra template"
+      "description": "The same title rule for dan-petty/github-workflows, the repository of the reusable workflows and of the repository template: dan-petty/github-workflows (a workflow) and https://github.com/dan-petty/github-workflows.git (the copier template) get the one name dan-petty/github-workflows.",
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/github-workflows(\\.git)?$/"],
+      "commitMessageTopic": "dan-petty/github-workflows"
     },
     {
-      "description": "Each file has one owner (#225). The repository template of infra renders the callers .github/workflows/pr-title.yml and .github/workflows/release.yml with the commit of its release tag, and the copier update moves these pins with the other files of the template. So the github-actions manager leaves them alone: when Renovate also moves them, the copier update conflicts. A caller of infra in another file, such as one of k8s-validate.yml, still gets its updates.",
+      "description": "The copier update of the repository template gets its own title, so that it differs from the update of a caller of a reusable workflow of the same release.",
+      "matchManagers": ["copier"],
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/github-workflows(\\.git)?$/"],
+      "commitMessageTopic": "dan-petty/github-workflows template"
+    },
+    {
+      "description": "Each file has one owner (#225). The repository template of dan-petty/github-workflows renders the callers .github/workflows/pr-title.yml and .github/workflows/release.yml with the commit of its release tag, and the copier update moves these pins with the other files of the template. So the github-actions manager leaves them alone: when Renovate also moves them, the copier update conflicts. A caller in another file, such as one of k8s-validate.yml, still gets its updates.",
       "matchManagers": ["github-actions"],
       "matchFileNames": [".github/workflows/pr-title.yml", ".github/workflows/release.yml"],
-      "matchPackageNames": ["dan-petty/infra"],
+      "matchPackageNames": ["dan-petty/github-workflows"],
+      "enabled": false
+    },
+    {
+      "description": "The reusable workflows and the repository template moved from dan-petty/infra to dan-petty/github-workflows (#217), and a newer release of infra holds neither. A caller at a newer tag of infra calls a workflow that does not exist, and a copier update to a newer tag of infra renders the files of the repository root. So Renovate leaves each caller of a workflow of infra and each copier render of infra alone. A repository moves once: copier recopy from https://github.com/dan-petty/github-workflows.git renders the callers of the template, and each other caller names dan-petty/github-workflows (renovate/README.md, \"Move to dan-petty/github-workflows\").",
+      "matchManagers": ["github-actions", "copier"],
+      "matchPackageNames": ["/^(https://)?(github\\.com/)?dan-petty/infra(\\.git)?$/"],
       "enabled": false
     },
     {

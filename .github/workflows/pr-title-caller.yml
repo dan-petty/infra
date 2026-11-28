@@ -1,9 +1,10 @@
 name: PR Title
 
 # The title check of each pull request into main of infra (README.md, "Releases"). The job calls the
-# reusable workflow pr-title.yml of the same commit, as each other repository calls it at a release
-# tag. Thus each pull request of infra also tests the workflow. The scopes are those of every
-# repository and those of the scope/* labels of .github/labels.yml.
+# reusable workflow pr-title.yml of dan-petty/github-workflows at the commit of a release tag, as
+# each other repository calls it, and Renovate moves the pin (README.md, "Pin a release"). The
+# scopes are those of every repository and those of the scope/* labels of .github/labels.yml. The
+# check has the name PR title / Semantic PR title, which the ruleset main requires.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -15,7 +16,7 @@ permissions: {}
 jobs:
   pr-title:
     name: PR title
-    uses: ./.github/workflows/pr-title.yml
+    uses: dan-petty/github-workflows/.github/workflows/pr-title.yml@39f92fb644e550f84a5797cce46a80a891231d4a # v0.1.0
     permissions:
       contents: read
       pull-requests: read

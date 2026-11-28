@@ -4,9 +4,9 @@
 # fields for annotations or configurations. infra fixes each finding of its own templates.
 #
 # The render step writes each object to its own file <n>-helm-<release>/[<namespace>/]<kind>-<name>.yaml
-# (scripts/k8s-validate.sh), so each entry names one check on one object pattern. Each entry has a
-# statement and an expiry date. After the date, the scan reports the finding again, and a person
-# checks the judgment again.
+# (k8s-validate.yml of dan-petty/github-workflows), so each entry names one check on one object
+# pattern. Each entry has a statement and an expiry date. After the date, the scan reports the
+# finding again, and a person checks the judgment again.
 checks:
   # Upstream deployment template mattermost-operator 1.0.5 lacks liveness probe configuration.
   - check: no-liveness-probe
