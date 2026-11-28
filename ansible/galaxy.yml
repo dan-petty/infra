@@ -1,6 +1,6 @@
 namespace: dan_petty
 name: infra
-version: 0.26.1
+version: 0.27.0
 readme: README.md
 authors:
   - dan-petty (https://github.com/dan-petty)
